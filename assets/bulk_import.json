@@ -1,0 +1,446 @@
+{
+    "categories": [
+        {
+            "name": "Freezer",
+            "color": "#FF9800"
+        },
+        {
+            "name": "Fridges",
+            "color": "#4CAF50"
+        },
+        {
+            "name": "Dry Items",
+            "color": "#F44336"
+        },
+        {
+            "name": "Online Items",
+            "color": "#9C27B0"
+        },
+        {
+            "name": "Packaging",
+            "color": "#795548"
+        },
+        {
+            "name": "Cleaning Items",
+            "color": "#9E9E9E"
+        }
+    ],
+    "suppliers": [
+        {
+            "name": "Leroy Merlin"
+        },
+        {
+            "name": "Makro"
+        },
+        {
+            "name": "Online Supplier"
+        },
+        {
+            "name": "Butcher"
+        },
+        {
+            "name": "Local Shop"
+        },
+        {
+            "name": "Chinese Shop"
+        }
+    ],
+    "items": [
+        {
+            "name": "Chicken thighs (karaage)",
+            "categoryNames": [
+                "Freezer"
+            ],
+            "supplierName": "Butcher",
+            "unit": "kg",
+            "parLevel": 3
+        },
+        {
+            "name": "Minced pork",
+            "categoryNames": [
+                "Freezer"
+            ],
+            "supplierName": "Butcher",
+            "unit": "kg",
+            "parLevel": 1
+        },
+        {
+            "name": "Pork belly (chashu)",
+            "categoryNames": [
+                "Freezer"
+            ],
+            "supplierName": "Butcher",
+            "unit": "kg",
+            "parLevel": 4
+        },
+        {
+            "name": "Chicken carcasses",
+            "categoryNames": [
+                "Freezer"
+            ],
+            "supplierName": "Butcher",
+            "unit": "kg",
+            "parLevel": 3
+        },
+        {
+            "name": "Eggs",
+            "categoryNames": [
+                "Fridges"
+            ],
+            "supplierName": "Makro",
+            "unit": "tray",
+            "parLevel": 2
+        },
+        {
+            "name": "Kimchi cabbage",
+            "categoryNames": [
+                "Fridges"
+            ],
+            "supplierName": "Chinese Shop",
+            "unit": "kg",
+            "parLevel": 2
+        },
+        {
+            "name": "Cabbage",
+            "categoryNames": [
+                "Fridges"
+            ],
+            "supplierName": "Chinese Shop",
+            "unit": "kg",
+            "parLevel": 2
+        },
+        {
+            "name": "Onions",
+            "categoryNames": [
+                "Fridges"
+            ],
+            "supplierName": "Local Shop",
+            "unit": "kg",
+            "parLevel": 1
+        },
+        {
+            "name": "Carrot",
+            "categoryNames": [
+                "Fridges"
+            ],
+            "supplierName": "Local Shop",
+            "unit": "kg",
+            "parLevel": 1
+        },
+        {
+            "name": "Leek",
+            "categoryNames": [
+                "Fridges"
+            ],
+            "supplierName": "Local Shop",
+            "unit": "kg",
+            "parLevel": 1
+        },
+        {
+            "name": "Spring onions",
+            "categoryNames": [
+                "Fridges"
+            ],
+            "supplierName": "Local Shop",
+            "unit": "bunch",
+            "parLevel": 2
+        },
+        {
+            "name": "Garlic",
+            "categoryNames": [
+                "Fridges"
+            ],
+            "supplierName": "Local Shop",
+            "unit": "kg",
+            "parLevel": 1
+        },
+        {
+            "name": "Ginger",
+            "categoryNames": [
+                "Fridges"
+            ],
+            "supplierName": "Local Shop",
+            "unit": "kg",
+            "parLevel": 1
+        },
+        {
+            "name": "Coriander",
+            "categoryNames": [
+                "Fridges"
+            ],
+            "supplierName": "Local Shop",
+            "unit": "bunch",
+            "parLevel": 1
+        },
+        {
+            "name": "Noodles",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Online Supplier",
+            "unit": "box",
+            "parLevel": 4
+        },
+        {
+            "name": "Gluten-free Noodles",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Online Supplier",
+            "unit": "pack",
+            "parLevel": 1
+        },
+        {
+            "name": "Menma (bamboo shoots)",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Online Supplier",
+            "unit": "pack",
+            "parLevel": 3
+        },
+        {
+            "name": "Soy sauce (shoyu)",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Chinese Shop",
+            "unit": "box",
+            "parLevel": 2
+        },
+        {
+            "name": "Mirin",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Chinese Shop",
+            "unit": "box",
+            "parLevel": 2
+        },
+        {
+            "name": "Black vinegar",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Chinese Shop",
+            "unit": "liter",
+            "parLevel": 2
+        },
+        {
+            "name": "Sesame oil",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Chinese Shop",
+            "unit": "liter",
+            "parLevel": 2
+        },
+        {
+            "name": "Chili flakes",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Chinese Shop",
+            "unit": "pack",
+            "parLevel": 2
+        },
+        {
+            "name": "Sesame paste (goma)",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Chinese Shop",
+            "unit": "kg",
+            "parLevel": 3
+        },
+        {
+            "name": "Miso paste",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Chinese Shop",
+            "unit": "kg",
+            "parLevel": 4
+        },
+        {
+            "name": "Sichuan pepper",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Chinese Shop",
+            "unit": "pack",
+            "parLevel": 2
+        },
+        {
+            "name": "Wonton wrappers",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Chinese Shop",
+            "unit": "pack",
+            "parLevel": 5
+        },
+        {
+            "name": "Dried shiitake mushrooms",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Chinese Shop",
+            "unit": "kg",
+            "parLevel": 1
+        },
+        {
+            "name": "Kombu",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Chinese Shop",
+            "unit": "kg",
+            "parLevel": 1
+        },
+        {
+            "name": "Flour",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Online Supplier",
+            "unit": "kg",
+            "parLevel": 3
+        },
+        {
+            "name": "Cornstarch",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Online Supplier",
+            "unit": "kg",
+            "parLevel": 3
+        },
+        {
+            "name": "Sugar",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Online Supplier",
+            "unit": "kg",
+            "parLevel": 5
+        },
+        {
+            "name": "Salt",
+            "categoryNames": [
+                "Dry Items"
+            ],
+            "supplierName": "Online Supplier",
+            "unit": "kg",
+            "parLevel": 2
+        },
+        {
+            "name": "Takeaway ramen bowls",
+            "categoryNames": [
+                "Packaging"
+            ],
+            "supplierName": "Makro",
+            "unit": "pack",
+            "parLevel": 10
+        },
+        {
+            "name": "Ramen bowl lids",
+            "categoryNames": [
+                "Packaging"
+            ],
+            "supplierName": "Makro",
+            "unit": "pack",
+            "parLevel": 10
+        },
+        {
+            "name": "Soup containers",
+            "categoryNames": [
+                "Packaging"
+            ],
+            "supplierName": "Makro",
+            "unit": "pack",
+            "parLevel": 8
+        },
+        {
+            "name": "Paper bags",
+            "categoryNames": [
+                "Packaging"
+            ],
+            "supplierName": "Makro",
+            "unit": "pack",
+            "parLevel": 6
+        },
+        {
+            "name": "Chopsticks",
+            "categoryNames": [
+                "Packaging"
+            ],
+            "supplierName": "Makro",
+            "unit": "box",
+            "parLevel": 5
+        },
+        {
+            "name": "Napkins",
+            "categoryNames": [
+                "Packaging"
+            ],
+            "supplierName": "Makro",
+            "unit": "pack",
+            "parLevel": 5
+        },
+        {
+            "name": "Dishwashing liquid",
+            "categoryNames": [
+                "Cleaning Items"
+            ],
+            "supplierName": "Makro",
+            "unit": "liter",
+            "parLevel": 2
+        },
+        {
+            "name": "Degreaser",
+            "categoryNames": [
+                "Cleaning Items"
+            ],
+            "supplierName": "Makro",
+            "unit": "liter",
+            "parLevel": 5
+        },
+        {
+            "name": "Floor cleaner",
+            "categoryNames": [
+                "Cleaning Items"
+            ],
+            "supplierName": "Makro",
+            "unit": "liter",
+            "parLevel": 2
+        },
+        {
+            "name": "Bleach",
+            "categoryNames": [
+                "Cleaning Items"
+            ],
+            "supplierName": "Makro",
+            "unit": "liter",
+            "parLevel": 2
+        },
+        {
+            "name": "Trash bags",
+            "categoryNames": [
+                "Cleaning Items"
+            ],
+            "supplierName": "Makro",
+            "unit": "roll",
+            "parLevel": 2
+        },
+        {
+            "name": "Paper towels",
+            "categoryNames": [
+                "Cleaning Items"
+            ],
+            "supplierName": "Makro",
+            "unit": "roll",
+            "parLevel": 3
+        }
+    ]
+}

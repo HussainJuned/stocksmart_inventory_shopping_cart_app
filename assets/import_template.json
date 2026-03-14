@@ -1,0 +1,28 @@
+{
+  "categories": [
+    { "name": "Produce", "color": "#4CAF50" },
+    { "name": "Meat & Seafood", "color": "#F44336" },
+    { "name": "Dry Goods", "color": "#795548" },
+    { "name": "Dairy", "color": "#FFC107" }
+  ],
+  "suppliers": [
+    { "name": "Main Wholesale" },
+    { "name": "Local Butcher" }
+  ],
+  "items": [
+    {
+      "name": "Roma Tomatoes",
+      "categoryNames": ["Produce"],
+      "supplierName": "Main Wholesale",
+      "unit": "kg",
+      "parLevel": 15.0
+    },
+    {
+      "name": "Pork Belly",
+      "categoryNames": ["Meat & Seafood"],
+      "supplierName": "Local Butcher",
+      "unit": "kg",
+      "parLevel": 20.0
+    }
+  ]
+}
