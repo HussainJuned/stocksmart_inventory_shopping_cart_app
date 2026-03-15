@@ -16,135 +16,168 @@ class ItemTile extends StatelessWidget {
     final inventory = Provider.of<InventoryProvider>(context, listen: false);
     final isLowStock = item.currentQuantity < item.parLevel;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: const Color(0xFF2C2C2E), // Dark card
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isLowStock
-            ? const BorderSide(color: Colors.redAccent, width: 1.5)
-            : BorderSide.none,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1E),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isLowStock ? Colors.redAccent.withOpacity(0.5) : Colors.white.withOpacity(0.05),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+          if (isLowStock)
+            BoxShadow(
+              color: Colors.redAccent.withOpacity(0.1),
+              blurRadius: 15,
+              spreadRadius: -2,
+            ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // 1. Edit Button (Leading Action)
-            _buildIconButton(
-              icon: Icons.edit,
-              onTap: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  builder: (_) => AddItemModal(itemToEdit: item),
-                );
-              },
-              color: Colors.white10,
-              iconColor: Colors.white70,
-              size: 32,
-            ),
-            const SizedBox(width: 10),
-            
-            // 2. Main Content (Flexible Center)
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Top Row: Name and Par Level
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            color: Colors.white,
-                            height: 1.2,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Par: ${item.parLevel.toStringAsFixed(0)} ${item.unit}',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: isLowStock ? Colors.redAccent.shade100 : Colors.white54,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  // Bottom Row: Stock Controls
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Stock:',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.white38,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      _buildStepper(context, item, inventory),
-                      const SizedBox(width: 4),
-                      Text(
-                        item.unit,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.white38,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-
-            // 3. Right Actions (Trailing Group)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Cart Action
-                Consumer<CartProvider>(
-                  builder: (context, cart, child) {
-                    bool isInCart = false;
-                    if (cart.lists.isNotEmpty) {
-                      final activeListId = cart.lists.first.id;
-                      final items = cart.getItemsForList(activeListId);
-                      isInCart = items.any((i) => i.itemId == item.id);
-                    }
-                    return _buildIconButton(
-                      icon: isInCart ? Icons.shopping_cart_checkout : Icons.add_shopping_cart_outlined,
-                      onTap: () => _showAddToCartDialog(context, cart, item),
-                      iconColor: isInCart ? Colors.greenAccent : Colors.orangeAccent.withOpacity(0.8),
-                      size: 32,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 32,
+                child: _buildIconButton(
+                  icon: Icons.edit,
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => AddItemModal(itemToEdit: item),
                     );
                   },
+                  color: Colors.white10,
+                  iconColor: Colors.white70,
+                  size: 24,
                 ),
-                // Drag Handle
-                if (index != null)
-                  ReorderableDragStartListener(
-                    index: index!,
-                    child: const Padding(
-                      padding: EdgeInsets.only(left: 4, right: 2),
-                      child: Icon(
-                        Icons.drag_handle,
-                        color: Colors.white24,
-                        size: 20,
+              ),
+              const SizedBox(width: 12),
+
+              // 2. Main Content (Flexible Center)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Name Left-Aligned
+                    Text(
+                      item.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                        color: Colors.white.withOpacity(0.95),
+                        letterSpacing: 0.5,
+                        height: 1.2,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.3),
+                            offset: const Offset(0, 1),
+                            blurRadius: 2.0,
+                          ),
+                        ],
                       ),
+                      textAlign: TextAlign.start,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-              ],
-            ),
-          ],
+                    const SizedBox(height: 8),
+                    // Bottom Row: Stock Controls (Start-Aligned)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Current Stock:',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.white.withOpacity(0.4),
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildStepper(context, item, inventory),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+                // 3. Right Actions (Trailing Group - Fixed Anchor)
+              SizedBox(
+                width: 80,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Premium Cart Button
+                    Consumer<CartProvider>(
+                      builder: (context, cart, child) {
+                        bool isInCart = false;
+                        if (cart.lists.isNotEmpty) {
+                          final activeListId = cart.lists.first.id;
+                          final items = cart.getItemsForList(activeListId);
+                          isInCart = items.any((i) => i.itemId == item.id);
+                        }
+                        
+                        return GestureDetector(
+                          onTap: () => _showAddToCartDialog(context, cart, item),
+                          child: Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: isInCart 
+                                  ? [Colors.greenAccent, Colors.green.shade700]
+                                  : [Colors.orangeAccent, Colors.deepOrange],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: (isInCart ? Colors.greenAccent : Colors.orangeAccent).withOpacity(0.3),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              isInCart ? Icons.check_circle : Icons.add_shopping_cart,
+                              color: isInCart ? Colors.white : Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    // Drag Handle
+                    if (index != null)
+                      ReorderableDragStartListener(
+                        index: index!,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Icon(
+                            Icons.drag_handle,
+                            color: Colors.white.withOpacity(0.15),
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),            ],
+          ),
         ),
       ),
     );
@@ -345,33 +378,32 @@ class _QuantityInputState extends State<_QuantityInput> {
   @override
   Widget build(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.black26,
-        borderRadius: BorderRadius.circular(8),
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            icon: const Icon(Icons.remove, color: Colors.orange, size: 12),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+          _buildStepButton(
+            icon: Icons.remove,
             onPressed: () {
               final newQty = widget.item.currentQuantity - 1;
               if (newQty >= 0)
                 widget.inventory.updateItemQuantity(widget.item.id, newQty);
             },
           ),
-          SizedBox(
-            width: 20,
+          Container(
+            width: 30,
+            alignment: Alignment.center,
             child: TextField(
               controller: _controller,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -384,18 +416,51 @@ class _QuantityInputState extends State<_QuantityInput> {
               onTapOutside: (_) => _submit(_controller.text),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.add, color: Colors.orange, size: 12),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+          _buildStepButton(
+            icon: Icons.add,
             onPressed: () {
               widget.inventory.updateItemQuantity(
                 widget.item.id,
                 widget.item.currentQuantity + 1,
               );
             },
+            isAdd: true,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStepButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    bool isAdd = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(15),
+        child: Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            color: isAdd ? Colors.orangeAccent : Colors.white.withOpacity(0.1),
+            shape: BoxShape.circle,
+            boxShadow: isAdd ? [
+              BoxShadow(
+                color: Colors.orangeAccent.withOpacity(0.3),
+                blurRadius: 4,
+                spreadRadius: 1,
+              )
+            ] : null,
+          ),
+          child: Icon(
+            icon,
+            color: isAdd ? Colors.black : Colors.white,
+            size: 14,
+          ),
+        ),
       ),
     );
   }
