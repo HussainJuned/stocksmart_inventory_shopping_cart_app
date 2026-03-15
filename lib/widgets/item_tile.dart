@@ -329,8 +329,13 @@ class _QuantityInputState extends State<_QuantityInput> {
   void initState() {
     super.initState();
     _controller = TextEditingController(
-      text: widget.item.currentQuantity.toStringAsFixed(0),
+      text: _formatQty(widget.item.currentQuantity),
     );
+  }
+
+  String _formatQty(double value) {
+    if (value % 1 == 0) return value.toInt().toString();
+    return value.toString();
   }
 
   @override
@@ -342,7 +347,7 @@ class _QuantityInputState extends State<_QuantityInput> {
       // For now, let's keep it simple: sync if value mismatch.
       final textVal = double.tryParse(_controller.text) ?? 0;
       if (textVal != widget.item.currentQuantity) {
-        _controller.text = widget.item.currentQuantity.toStringAsFixed(0);
+        _controller.text = _formatQty(widget.item.currentQuantity);
       }
     }
   }
@@ -362,7 +367,7 @@ class _QuantityInputState extends State<_QuantityInput> {
       widget.inventory.updateItemQuantity(widget.item.id, newQty);
     } else {
       // Revert if invalid
-      _controller.text = widget.item.currentQuantity.toStringAsFixed(0);
+      _controller.text = _formatQty(widget.item.currentQuantity);
     }
   }
 
@@ -387,7 +392,7 @@ class _QuantityInputState extends State<_QuantityInput> {
             },
           ),
           Container(
-            width: 30,
+            width: 50,
             alignment: Alignment.center,
             child: TextField(
               controller: _controller,
