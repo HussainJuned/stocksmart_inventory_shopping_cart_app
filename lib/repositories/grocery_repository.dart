@@ -48,9 +48,10 @@ class GroceryRepository {
 
   // --- Sync Logic ---
   void _syncFromRemote() {
-    if (_firestoreService == null) return;
+    final service = _firestoreService;
+    if (service == null) return;
 
-    _subscriptions.add(_firestoreService!.getItemsStream().listen((remoteItems) async {
+    _subscriptions.add(service.getItemsStream().listen((remoteItems) async {
       // Simple Last-Write-Wins Sync
       for (var remoteItem in remoteItems) {
         await _hiveService.saveItem(remoteItem);
@@ -58,14 +59,14 @@ class GroceryRepository {
       onSyncUpdated?.call();
     }));
 
-    _subscriptions.add(_firestoreService!.getCategoriesStream().listen((remoteItems) async {
+    _subscriptions.add(service.getCategoriesStream().listen((remoteItems) async {
       for (var remoteItem in remoteItems) {
         await _hiveService.saveCategory(remoteItem);
       }
       onSyncUpdated?.call();
     }));
 
-    _subscriptions.add(_firestoreService!.getSuppliersStream().listen((remoteItems) async {
+    _subscriptions.add(service.getSuppliersStream().listen((remoteItems) async {
       for (var remoteItem in remoteItems) {
         await _hiveService.saveSupplier(remoteItem);
       }
@@ -117,5 +118,10 @@ class GroceryRepository {
   Future<void> deleteSupplier(String id) async {
     await _hiveService.deleteSupplier(id);
     _firestoreService?.deleteSupplier(id);
+  }
+
+  Future<void> clearAllData() async {
+    await _hiveService.clearAll();
+    await _firestoreService?.clearAllData();
   }
 }

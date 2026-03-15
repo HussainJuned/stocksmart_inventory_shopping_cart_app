@@ -414,6 +414,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         _showImportDialog(context);
                       },
                     ),
+                    ListTile(
+                      leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                      title: const Text('Reset All Data', style: TextStyle(color: Colors.redAccent)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showResetConfirmation(context);
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -494,6 +502,41 @@ class _InventoryScreenState extends State<InventoryScreen> {
       children: inventory.categories.map((cat) {
         return _CategoryList(categoryId: cat.id, categoryName: cat.name);
       }).toList(),
+    );
+  }
+
+  void _showResetConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset All Data?'),
+        content: const Text(
+          'This will permanently delete all items, categories, suppliers, and order history from both your device and the cloud. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final inventory = Provider.of<InventoryProvider>(context, listen: false);
+              final cart = Provider.of<CartProvider>(context, listen: false);
+              
+              await inventory.resetEverything();
+              await cart.resetData();
+
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('All data has been reset.')),
+              );
+            },
+            child: const Text('Reset Everything'),
+          ),
+        ],
+      ),
     );
   }
 }

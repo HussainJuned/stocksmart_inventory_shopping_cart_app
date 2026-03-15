@@ -30,170 +30,109 @@ class ItemTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Left Column (flex 2): Item Icon - vertically centered
-            Expanded(
-              flex: 2,
-              child: Center(
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        builder: (_) => AddItemModal(itemToEdit: item),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white10,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.edit,
-                        size: 22,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            // 1. Edit Button (Leading Action)
+            _buildIconButton(
+              icon: Icons.edit,
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  builder: (_) => AddItemModal(itemToEdit: item),
+                );
+              },
+              color: Colors.white10,
+              iconColor: Colors.white70,
+              size: 32,
             ),
-            const SizedBox(width: 12),
-            // Middle Column (flex 8): Item Name + Par Level + In Stock
+            const SizedBox(width: 10),
+            
+            // 2. Main Content (Flexible Center)
             Expanded(
-              flex: 8,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Item Name
                   Text(
                     item.name,
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 16,
+                      fontSize: 15,
                       color: Colors.white,
-                      height: 1.3,
+                      height: 1.2,
                     ),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
-                  // Par Level and In Stock Row
-                  Row(
-                    children: [
-                      // Par Level
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Par Level',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.grey.shade400,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${item.parLevel.toStringAsFixed(0)} ${item.unit}',
-                              style: TextStyle(
-                                color: isLowStock
-                                    ? Colors.redAccent
-                                    : Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // In Stock Stepper
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'In Stock',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey.shade400,
-                              fontWeight: FontWeight.w500,
-                            ),
+                  const SizedBox(height: 6),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      children: [
+                        // Par Level
+                        Text(
+                          'Par: ${item.parLevel.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isLowStock ? Colors.redAccent.shade100 : Colors.white54,
+                            fontWeight: FontWeight.w500,
                           ),
-                          const SizedBox(height: 4),
-                          _buildStepper(context, item, inventory),
-                        ],
-                      ),
-                    ],
+                        ),
+                        const SizedBox(width: 8),
+                        // Stock Control
+                        Text(
+                          'Stock: ',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.white38,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        _buildStepper(context, item, inventory),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            // Right Column (flex 2): Add to Cart Button - vertically centered
-            Expanded(
-              flex: 2,
-              child: Consumer<CartProvider>(
-                builder: (context, cart, child) {
-                  bool isInCart = false;
-                  if (cart.lists.isNotEmpty) {
-                    final activeListId = cart.lists.first.id;
-                    final items = cart.getItemsForList(activeListId);
-                    isInCart = items.any((i) => i.itemId == item.id);
-                  }
+            const SizedBox(width: 8),
 
-                  return Align(
-                    alignment: Alignment.center,
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => _showAddToCartDialog(context, cart, item),
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: isInCart
-                                ? Colors.green.withOpacity(0.15)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            isInCart
-                                ? Icons.shopping_cart_checkout
-                                : Icons.add_shopping_cart_outlined,
-                            size: 26,
-                            color: isInCart ? Colors.green : Colors.greenAccent,
-                          ),
-                        ),
+            // 3. Right Actions (Trailing Group)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Cart Action
+                Consumer<CartProvider>(
+                  builder: (context, cart, child) {
+                    bool isInCart = false;
+                    if (cart.lists.isNotEmpty) {
+                      final activeListId = cart.lists.first.id;
+                      final items = cart.getItemsForList(activeListId);
+                      isInCart = items.any((i) => i.itemId == item.id);
+                    }
+                    return _buildIconButton(
+                      icon: isInCart ? Icons.shopping_cart_checkout : Icons.add_shopping_cart_outlined,
+                      onTap: () => _showAddToCartDialog(context, cart, item),
+                      iconColor: isInCart ? Colors.greenAccent : Colors.orangeAccent.withOpacity(0.8),
+                      size: 32,
+                    );
+                  },
+                ),
+                // Drag Handle
+                if (index != null)
+                  ReorderableDragStartListener(
+                    index: index!,
+                    child: const Padding(
+                      padding: EdgeInsets.only(left: 4, right: 2),
+                      child: Icon(
+                        Icons.drag_handle,
+                        color: Colors.white24,
+                        size: 20,
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
-            // Optional: Drag Handle Column (flex 1)
-            if (index != null)
-              Expanded(
-                flex: 1,
-                child: ReorderableDragStartListener(
-                  index: index!,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    child: const Icon(
-                      Icons.drag_handle,
-                      color: Colors.white30,
-                    ),
                   ),
-                ),
-              ),
+              ],
+            ),
           ],
         ),
       ),
@@ -307,6 +246,35 @@ class ItemTile extends StatelessWidget {
     // Let's make a small helper widget to handle the input state.
     return _QuantityInput(item: item, inventory: inventory);
   }
+
+  Widget _buildIconButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    Color? color,
+    Color? iconColor,
+    double size = 40,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            size: size * 0.55,
+            color: iconColor,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _QuantityInput extends StatefulWidget {
@@ -373,9 +341,9 @@ class _QuantityInputState extends State<_QuantityInput> {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            icon: const Icon(Icons.remove, color: Colors.orange, size: 16),
-            padding: const EdgeInsets.all(2),
-            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.remove, color: Colors.orange, size: 12),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
             onPressed: () {
               final newQty = widget.item.currentQuantity - 1;
               if (newQty >= 0)
@@ -383,7 +351,7 @@ class _QuantityInputState extends State<_QuantityInput> {
             },
           ),
           SizedBox(
-            width: 32,
+            width: 20,
             child: TextField(
               controller: _controller,
               keyboardType: const TextInputType.numberWithOptions(
@@ -391,7 +359,7 @@ class _QuantityInputState extends State<_QuantityInput> {
               ),
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -405,9 +373,9 @@ class _QuantityInputState extends State<_QuantityInput> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.add, color: Colors.orange, size: 16),
-            padding: const EdgeInsets.all(2),
-            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.add, color: Colors.orange, size: 12),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
             onPressed: () {
               widget.inventory.updateItemQuantity(
                 widget.item.id,

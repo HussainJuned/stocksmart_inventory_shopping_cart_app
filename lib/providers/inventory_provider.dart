@@ -221,4 +221,15 @@ class InventoryProvider extends ChangeNotifier {
     await importService.importFromJson(jsonString);
     _fetchLocal();
   }
+
+  Future<void> resetEverything() async {
+    _isLoading = true;
+    notifyListeners();
+
+    await _repository.clearAllData();
+    _fetchLocal();
+
+    _isLoading = false;
+    notifyListeners();
+  }
 }

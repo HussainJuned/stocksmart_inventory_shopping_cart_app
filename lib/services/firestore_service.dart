@@ -169,4 +169,28 @@ class FirestoreService {
         .doc(itemId)
         .delete();
   }
+
+  Future<void> clearAllData() async {
+    final collections = [
+      'grocery_items',
+      'categories',
+      'suppliers',
+      'shopping_lists',
+      'cart_items'
+    ];
+
+    for (final coll in collections) {
+      final snapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection(coll)
+          .get();
+
+      final batch = _db.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+  }
 }

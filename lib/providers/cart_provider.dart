@@ -236,4 +236,10 @@ class CartProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> resetData() async {
+    _lists.clear();
+    _listItems.clear();
+    notifyListeners();
+  }
 }
