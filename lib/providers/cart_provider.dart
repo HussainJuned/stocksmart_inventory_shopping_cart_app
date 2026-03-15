@@ -56,13 +56,33 @@ class CartProvider extends ChangeNotifier {
     if (_firestoreService == null) return;
 
     _subscriptions.add(_firestoreService!.getShoppingListsStream().listen((remoteLists) async {
+      final localLists = _hiveService.getShoppingLists();
+      final remoteIds = remoteLists.map((l) => l.id).toSet();
+
+      // 1. Delete local lists that are no longer in remote
+      for (final localList in localLists) {
+        if (!remoteIds.contains(localList.id)) {
+          await _hiveService.deleteShoppingList(localList.id);
+        }
+      }
+      // 2. Save/Update remote lists
       for (var list in remoteLists) {
         await _hiveService.saveShoppingList(list);
       }
-      _loadFromHive(); // Reload UI when remote data changes
+      _loadFromHive();
     }));
 
     _subscriptions.add(_firestoreService!.getCartItemsStream().listen((remoteItems) async {
+      final localItems = _hiveService.getCartItems();
+      final remoteIds = remoteItems.map((i) => i.id).toSet();
+
+      // 1. Delete local items that are no longer in remote
+      for (final localItem in localItems) {
+        if (!remoteIds.contains(localItem.id)) {
+          await _hiveService.deleteCartItem(localItem.id);
+        }
+      }
+      // 2. Save/Update remote items
       for (var item in remoteItems) {
         await _hiveService.saveCartItem(item);
       }
