@@ -45,68 +45,75 @@ class ItemTile extends StatelessWidget {
           padding: const EdgeInsets.all(12.0),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 32,
-                child: _buildIconButton(
-                  icon: Icons.edit,
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      builder: (_) => AddItemModal(itemToEdit: item),
-                    );
-                  },
-                  color: Colors.white10,
-                  iconColor: Colors.white70,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              // 2. Main Content (Flexible Center)
+            children: [              // 1. Name & Stock Information (Flexible Center)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Name Left-Aligned
-                    Text(
-                      item.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 17,
-                        color: Colors.white.withOpacity(0.95),
-                        letterSpacing: 0.5,
-                        height: 1.2,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.3),
-                            offset: const Offset(0, 1),
-                            blurRadius: 2.0,
-                          ),
-                        ],
+                    // Name Tappable for Editing
+                    GestureDetector(
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (_) => AddItemModal(itemToEdit: item),
+                        );
+                      },
+                      child: Text(
+                        item.name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 17,
+                          color: Colors.white.withOpacity(0.95),
+                          letterSpacing: 0.5,
+                          height: 1.2,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withOpacity(0.3),
+                              offset: const Offset(0, 1),
+                              blurRadius: 2.0,
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.start,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      textAlign: TextAlign.start,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
-                    // Bottom Row: Stock Controls (Start-Aligned)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+                    // Bottom Row: Stock Controls & Multi-line Unit
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Current Stock:',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.white.withOpacity(0.4),
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.3,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Current Stock:',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.white.withOpacity(0.4),
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _buildStepper(context, item, inventory),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 2),
+                          child: Text(
+                            item.unit,
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: Colors.white.withOpacity(0.2),
+                              fontWeight: FontWeight.w400,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        _buildStepper(context, item, inventory),
                       ],
                     ),
                   ],
@@ -115,7 +122,7 @@ class ItemTile extends StatelessWidget {
 
               // 3. Right Actions (Trailing Group - Balanced Anchor)
               SizedBox(
-                width: 80,
+                width: 90,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
@@ -161,17 +168,15 @@ class ItemTile extends StatelessWidget {
                         );
                       },
                     ),
+                    const SizedBox(width: 12),
                     // Drag Handle
                     if (index != null)
                       ReorderableDragStartListener(
                         index: index!,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 4),
-                          child: Icon(
-                            Icons.drag_handle,
-                            color: Colors.white.withOpacity(0.15),
-                            size: 24,
-                          ),
+                        child: Icon(
+                          Icons.drag_handle,
+                          color: Colors.white.withOpacity(0.15),
+                          size: 24,
                         ),
                       ),
                   ],
@@ -280,36 +285,6 @@ class ItemTile extends StatelessWidget {
     InventoryProvider inventory,
   ) {
     return _QuantityInput(item: item, inventory: inventory);
-  }
-
-  Widget _buildIconButton({
-    required IconData icon,
-    required VoidCallback onTap,
-    Color? color,
-    Color? iconColor,
-    double size = 40,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          width: size,
-          height: size,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            icon,
-            size: size * 0.6,
-            color: iconColor,
-          ),
-        ),
-      ),
-    );
   }
 }
 

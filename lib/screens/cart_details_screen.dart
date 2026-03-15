@@ -239,17 +239,29 @@ class CartDetailsScreen extends StatelessWidget {
                                                     child: Row(
                                                       mainAxisSize: MainAxisSize.min,
                                                       children: [
-                                                        Text(
-                                                          'Stock: ${_formatQty(_getCurrentStock(inventoryProvider, item.itemId))} ${item.unit}',
-                                                          style: TextStyle(
-                                                            fontSize: 10,
-                                                            fontWeight: FontWeight.w600,
-                                                            color: Colors.white.withOpacity(0.4),
-                                                            letterSpacing: 0.2,
-                                                          ),
+                                                        Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            Text(
+                                                              'Stock: ${_formatQty(_getCurrentStock(inventoryProvider, item.itemId))}',
+                                                              style: TextStyle(
+                                                                fontSize: 10,
+                                                                fontWeight: FontWeight.w600,
+                                                                color: Colors.white.withOpacity(0.4),
+                                                                letterSpacing: 0.2,
+                                                              ),
+                                                            ),
+                                                            Text(
+                                                              item.unit,
+                                                              style: TextStyle(
+                                                                fontSize: 8,
+                                                                fontWeight: FontWeight.w400,
+                                                                color: Colors.white.withOpacity(0.25),
+                                                              ),
+                                                            ),
+                                                          ],
                                                         ),
-                                                        const SizedBox(width: 4),
-                                                        Icon(Icons.edit, size: 8, color: Colors.white.withOpacity(0.2)),
                                                       ],
                                                     ),
                                                   ),
