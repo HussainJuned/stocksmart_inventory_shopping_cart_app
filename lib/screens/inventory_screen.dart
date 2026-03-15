@@ -334,21 +334,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         );
                       },
                     ),
-                    ListTile(
-                      leading: const Icon(Icons.download),
-                      title: const Text('Import from JSON'),
-                      onTap: () {
-                        Navigator.pop(context); // Close Drawer
-                        _showImportDialog(context);
-                      },
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
-                      title: const Text('Reset All Data', style: TextStyle(color: Colors.redAccent)),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showResetConfirmation(context);
-                      },
+                    const Divider(),
+                    ExpansionTile(
+                      leading: const Icon(Icons.settings),
+                      title: const Text('Settings'),
+                      children: [
+                        ListTile(
+                          contentPadding: const EdgeInsets.only(left: 32),
+                          leading: const Icon(Icons.download),
+                          title: const Text('Import from JSON'),
+                          onTap: () {
+                            Navigator.pop(context); // Close Drawer
+                            _showImportDialog(context);
+                          },
+                        ),
+                        /* ListTile(
+                          contentPadding: const EdgeInsets.only(left: 32),
+                          leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                          title: const Text('Reset All Data', style: TextStyle(color: Colors.redAccent)),
+                          onTap: () {
+                            Navigator.pop(context);
+                            _showResetConfirmation(context);
+                          },
+                        ), */
+                      ],
                     ),
                   ],
                 ),
@@ -496,7 +505,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  void _showResetConfirmation(BuildContext context) {
+  /* void _showResetConfirmation(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -529,7 +538,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         ],
       ),
     );
-  }
+  } */
 }
 
 class _CategoryList extends StatelessWidget {

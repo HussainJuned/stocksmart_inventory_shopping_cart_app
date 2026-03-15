@@ -257,6 +257,26 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> deleteShoppingList(String listId) async {
+    // 1. Remove from local memory
+    _lists.removeWhere((l) => l.id == listId);
+    final items = _listItems.remove(listId) ?? [];
+
+    // 2. Remove from Hive
+    await _hiveService.deleteShoppingList(listId);
+    for (var item in items) {
+      await _hiveService.deleteCartItem(item.id);
+    }
+
+    // 3. Remove from Firestore
+    await _firestoreService?.deleteShoppingList(listId);
+    for (var item in items) {
+      await _firestoreService?.deleteCartItem(item.id);
+    }
+
+    notifyListeners();
+  }
+
   Future<void> resetData() async {
     _lists.clear();
     _listItems.clear();

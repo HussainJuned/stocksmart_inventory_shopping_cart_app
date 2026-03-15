@@ -80,20 +80,60 @@ class CartHistoryScreen extends StatelessWidget {
                 itemCount: cartProvider.archivedLists.length,
                 itemBuilder: (context, index) {
                   final list = cartProvider.archivedLists[index];
-                  final itemCount = cartProvider
-                      .getItemsForList(list.id)
-                      .length;
-                  return _CartListTile(
-                    list: list,
-                    itemCount: itemCount,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CartDetailsScreen(listId: list.id),
+                  final itemCount = cartProvider.getItemsForList(list.id).length;
+                  
+                  return Dismissible(
+                    key: Key(list.id),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 20),
+                      color: Colors.redAccent,
+                      child: const Icon(Icons.delete, color: Colors.white),
+                    ),
+                    confirmDismiss: (direction) async {
+                      return await showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          backgroundColor: const Color(0xFF1A1A1A),
+                          title: const Text('Delete Order?'),
+                          content: const Text('This will permanently remove this shopping history record.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('CANCEL'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                              child: const Text('DELETE', style: TextStyle(color: Colors.white)),
+                            ),
+                          ],
                         ),
                       );
                     },
+                    onDismissed: (direction) {
+                      cartProvider.deleteShoppingList(list.id);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Order history deleted'),
+                          backgroundColor: Colors.redAccent,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    child: _CartListTile(
+                      list: list,
+                      itemCount: itemCount,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CartDetailsScreen(listId: list.id),
+                          ),
+                        );
+                      },
+                    ),
                   );
                 },
               ),
