@@ -71,7 +71,7 @@ class ItemTile extends StatelessWidget {
                       children: [
                         // Par Level
                         Text(
-                          'Par: ${item.parLevel.toStringAsFixed(0)}',
+                          'Par: ${item.parLevel.toStringAsFixed(0)} ${item.unit}',
                           style: TextStyle(
                             fontSize: 10,
                             color: isLowStock ? Colors.redAccent.shade100 : Colors.white54,
@@ -81,7 +81,7 @@ class ItemTile extends StatelessWidget {
                         const SizedBox(width: 8),
                         // Stock Control
                         Text(
-                          'Stock: ',
+                          'Stock:',
                           style: TextStyle(
                             fontSize: 10,
                             color: Colors.white38,
@@ -89,6 +89,14 @@ class ItemTile extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         _buildStepper(context, item, inventory),
+                        const SizedBox(width: 4),
+                        Text(
+                          item.unit,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white38,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -262,13 +270,14 @@ class ItemTile extends StatelessWidget {
         child: Container(
           width: size,
           height: size,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             icon,
-            size: size * 0.55,
+            size: size * 0.6,
             color: iconColor,
           ),
         ),
