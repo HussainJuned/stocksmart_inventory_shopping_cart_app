@@ -113,7 +113,7 @@ class ItemTile extends StatelessWidget {
                 ),
               ),
 
-                // 3. Right Actions (Trailing Group - Fixed Anchor)
+              // 3. Right Actions (Trailing Group - Balanced Anchor)
               SizedBox(
                 width: 80,
                 child: Row(
@@ -154,7 +154,7 @@ class ItemTile extends StatelessWidget {
                             ),
                             child: Icon(
                               isInCart ? Icons.check_circle : Icons.add_shopping_cart,
-                              color: isInCart ? Colors.white : Colors.white,
+                              color: Colors.white,
                               size: 20,
                             ),
                           ),
@@ -170,7 +170,7 @@ class ItemTile extends StatelessWidget {
                           child: Icon(
                             Icons.drag_handle,
                             color: Colors.white.withOpacity(0.15),
-                            size: 22,
+                            size: 24,
                           ),
                         ),
                       ),
@@ -272,22 +272,13 @@ class ItemTile extends StatelessWidget {
     );
   }
 
+
+
   Widget _buildStepper(
     BuildContext context,
     GroceryItem item,
     InventoryProvider inventory,
   ) {
-    // Controller initialized with current value.
-    // Note: Creating controller in build method is efficient enough for this small widgets in listviews
-    // but ideally we should be careful. Since this is a stateless widget, we'll use a local Key or
-    // rely on the fact that if user types, we update provider.
-    // Better approach for inputs in list view: Use a generic StatelessWidget but with a text field
-    // that updates onSubmitted or lost focus.
-
-    // Simplest reliable way for stateless item:
-    // Use a TextEditingController that we don't dispose (anti-pattern) OR
-    // better: make this part a StatefulWidget or just use a custom input widget.
-    // Let's make a small helper widget to handle the input state.
     return _QuantityInput(item: item, inventory: inventory);
   }
 

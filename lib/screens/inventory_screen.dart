@@ -4,7 +4,6 @@ import '../providers/auth_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/cart_provider.dart';
 import '../widgets/item_tile.dart';
-import '../widgets/add_item_modal.dart';
 import 'cart_history_screen.dart';
 import 'cart_details_screen.dart';
 import 'category_manager_screen.dart';
@@ -248,77 +247,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   );
                 },
               ),
-              Consumer<CartProvider>(
-                builder: (context, cartProvider, child) {
-                  final activeCart = cartProvider.activeCart;
-                  final itemCount = activeCart != null
-                      ? cartProvider.getItemsForList(activeCart.id).length
-                      : 0;
-
-                  return InkWell(
-                    onTap: () {
-                      if (activeCart != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                CartDetailsScreen(listId: activeCart.id),
-                          ),
-                        );
-                      } else {
-                        // Create new cart if none exists
-                        cartProvider.createNewCart().then((_) {
-                          final newCart = cartProvider.activeCart;
-                          if (newCart != null) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    CartDetailsScreen(listId: newCart.id),
-                              ),
-                            );
-                          }
-                        });
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(24),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.all(12.0),
-                          child: Icon(Icons.shopping_cart),
-                        ),
-                        if (itemCount > 0)
-                          Positioned(
-                            right: 4,
-                            top: 4,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              constraints: const BoxConstraints(
-                                minWidth: 14,
-                                minHeight: 14,
-                              ),
-                              child: Text(
-                                '$itemCount',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
             ],
           ],
         ),
@@ -438,14 +366,77 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ],
           ),
         ),
-        floatingActionButton: FloatingActionButton(
-          backgroundColor: Colors.deepOrange,
-          child: const Icon(Icons.add, color: Colors.white),
-          onPressed: () {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              builder: (_) => const AddItemModal(),
+        floatingActionButton: Consumer<CartProvider>(
+          builder: (context, cartProvider, child) {
+            final activeCart = cartProvider.activeCart;
+            final itemCount = activeCart != null
+                ? cartProvider.getItemsForList(activeCart.id).length
+                : 0;
+
+            if (itemCount == 0) return const SizedBox.shrink();
+
+            return GestureDetector(
+              onTap: () {
+                if (activeCart != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CartDetailsScreen(listId: activeCart.id),
+                    ),
+                  );
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Colors.orangeAccent, Colors.deepOrange],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.deepOrange.withOpacity(0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.shopping_cart, color: Colors.white, size: 20),
+                    const SizedBox(width: 10),
+                    Text(
+                      'View Cart',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$itemCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             );
           },
         ),
