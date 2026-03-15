@@ -52,53 +52,56 @@ class ItemTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    item.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: Colors.white,
-                      height: 1.2,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  // Top Row: Name and Par Level
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            color: Colors.white,
+                            height: 1.2,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Par: ${item.parLevel.toStringAsFixed(0)} ${item.unit}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isLowStock ? Colors.redAccent.shade100 : Colors.white54,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 6),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Row(
-                      children: [
-                        // Par Level
-                        Text(
-                          'Par: ${item.parLevel.toStringAsFixed(0)} ${item.unit}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: isLowStock ? Colors.redAccent.shade100 : Colors.white54,
-                            fontWeight: FontWeight.w500,
-                          ),
+                  // Bottom Row: Stock Controls
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Stock:',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.white38,
                         ),
-                        const SizedBox(width: 8),
-                        // Stock Control
-                        Text(
-                          'Stock:',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.white38,
-                          ),
+                      ),
+                      const SizedBox(width: 4),
+                      _buildStepper(context, item, inventory),
+                      const SizedBox(width: 4),
+                      Text(
+                        item.unit,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.white38,
                         ),
-                        const SizedBox(width: 4),
-                        _buildStepper(context, item, inventory),
-                        const SizedBox(width: 4),
-                        Text(
-                          item.unit,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.white38,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ),
