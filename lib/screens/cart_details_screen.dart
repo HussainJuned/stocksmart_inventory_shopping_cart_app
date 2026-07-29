@@ -210,14 +210,22 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                       getCategoryName: getCategoryName,
                       getCategoryColor: getCategoryColor,
                     ),
-                    const SizedBox(height: 8),
-                    ...groupItems.map((item) {
+                    ...groupItems.asMap().entries.expand((entry) {
+                      final index = entry.key;
+                      final item = entry.value;
+                      final subKey = _getSubKey(item, inventoryProvider);
+                      final isFirstInSubGroup = index == 0 ||
+                          _getSubKey(
+                                groupItems[index - 1],
+                                inventoryProvider,
+                              ) !=
+                              subKey;
                       final isBought = item.state == CartItemState.bought;
                       final isSkipped = item.state == CartItemState.skipped;
                       final isUnavailable =
                           item.state == CartItemState.unavailable;
 
-                      return Padding(
+                      final card = Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 6,
@@ -418,6 +426,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                                   ),
                                                 ),
                                               ),
+
                                             ],
                                           ),
                                         ),
@@ -435,6 +444,17 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                           ),
                         ),
                       );
+                      return isFirstInSubGroup
+                          ? [
+                              _buildSubGroupHeader(
+                                subKey,
+                                getSupplierName,
+                                getCategoryName,
+                                getCategoryColor,
+                              ),
+                              card,
+                            ]
+                          : [card];
                     }),
                     const SizedBox(height: 16),
                   ],
@@ -643,6 +663,70 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                 fontWeight: FontWeight.bold,
                 color: Colors.white.withOpacity(0.4),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Secondary sub-group key ────────────────────────────────────────────────
+  String _getSubKey(CartItem item, InventoryProvider inventoryProvider) {
+    if (_groupBy == _GroupBy.supplier) {
+      try {
+        final gi =
+            inventoryProvider.items.firstWhere((i) => i.id == item.itemId);
+        return gi.categoryIds.isNotEmpty
+            ? gi.categoryIds.first
+            : 'uncategorized';
+      } catch (_) {
+        return 'uncategorized';
+      }
+    } else {
+      return item.supplierId ?? 'unknown';
+    }
+  }
+
+  // ── Sub-group header ─────────────────────────────────────────────────────────
+  Widget _buildSubGroupHeader(
+    String subKey,
+    String Function(String) getSupplierName,
+    String Function(String) getCategoryName,
+    Color Function(String) getCategoryColor,
+  ) {
+    final isCategory = _groupBy == _GroupBy.supplier;
+    final label =
+        isCategory ? getCategoryName(subKey) : getSupplierName(subKey);
+    final color =
+        isCategory ? getCategoryColor(subKey) : Colors.white.withOpacity(0.35);
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 20, right: 16, top: 10, bottom: 2),
+      child: Row(
+        children: [
+          if (isCategory)
+            Container(
+              width: 6,
+              height: 6,
+              margin: const EdgeInsets.only(right: 6),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(right: 5),
+              child: Icon(
+                Icons.local_shipping_outlined,
+                size: 10,
+                color: color,
+              ),
+            ),
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color,
+              letterSpacing: 0.8,
             ),
           ),
         ],
