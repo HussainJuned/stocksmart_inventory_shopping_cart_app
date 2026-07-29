@@ -18,34 +18,42 @@ class CategoryManagerScreen extends StatelessWidget {
         child: categories.isEmpty
             ? const Center(child: Text('No categories yet.'))
             : ReorderableListView.builder(
-              padding: const EdgeInsets.only(bottom: 80),
-              itemCount: categories.length,
-              onReorder: (oldIndex, newIndex) {
-                Provider.of<InventoryProvider>(context, listen: false)
-                    .reorderCategory(oldIndex, newIndex);
-              },
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                return ListTile(
-                  key: ValueKey(category.id),
-                  title: Text(category.name),
-                  leading: const Icon(Icons.drag_handle),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blueAccent),
-                        onPressed: () => _showEditDialog(context, category),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.redAccent),
-                        onPressed: () => _confirmDelete(context, category),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                padding: const EdgeInsets.only(bottom: 80),
+                itemCount: categories.length,
+                onReorder: (oldIndex, newIndex) {
+                  Provider.of<InventoryProvider>(
+                    context,
+                    listen: false,
+                  ).reorderCategory(oldIndex, newIndex);
+                },
+                itemBuilder: (context, index) {
+                  final category = categories[index];
+                  return ListTile(
+                    key: ValueKey(category.id),
+                    title: Text(category.name),
+                    leading: const Icon(Icons.drag_handle),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.edit,
+                            color: Colors.blueAccent,
+                          ),
+                          onPressed: () => _showEditDialog(context, category),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete,
+                            color: Colors.redAccent,
+                          ),
+                          onPressed: () => _confirmDelete(context, category),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddDialog(context),

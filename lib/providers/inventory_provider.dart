@@ -154,9 +154,15 @@ class InventoryProvider extends ChangeNotifier {
     _fetchLocal();
   }
 
-  Future<void> reorderItem(int oldIndex, int newIndex, String categoryId) async {
-    final categoryItems = _items.where((i) => i.categoryIds.contains(categoryId)).toList();
-    
+  Future<void> reorderItem(
+    int oldIndex,
+    int newIndex,
+    String categoryId,
+  ) async {
+    final categoryItems = _items
+        .where((i) => i.categoryIds.contains(categoryId))
+        .toList();
+
     // Use stable sort to match UI exactly
     categoryItems.sort((a, b) {
       int cmp = a.sortOrder.compareTo(b.sortOrder);
@@ -165,7 +171,7 @@ class InventoryProvider extends ChangeNotifier {
     });
 
     if (oldIndex < 0 || oldIndex >= categoryItems.length) return;
-    
+
     // Adjust newIndex according to ReorderableListView's quirk
     if (oldIndex < newIndex) {
       newIndex -= 1;
@@ -192,7 +198,7 @@ class InventoryProvider extends ChangeNotifier {
       // Moved between two items
       final prevOrder = categoryItems[newIndex - 1].sortOrder;
       final nextOrder = categoryItems[newIndex + 1].sortOrder;
-      
+
       // If the existing sort orders are identical or broken (e.g. freshly imported data),
       // we can't find a midpoint. We must re-index the entire category array.
       if (prevOrder >= nextOrder) {
@@ -209,7 +215,7 @@ class InventoryProvider extends ChangeNotifier {
         final updated = categoryItems[i].copyWith(sortOrder: i * 1.0);
         final globalIndex = _items.indexWhere((it) => it.id == updated.id);
         if (globalIndex != -1) _items[globalIndex] = updated;
-        
+
         // Fire and forget saves
         _repository.updateItem(updated);
       }
@@ -218,17 +224,17 @@ class InventoryProvider extends ChangeNotifier {
       final updatedItem = itemToMove.copyWith(sortOrder: newSortOrder);
       final globalIndex = _items.indexWhere((i) => i.id == updatedItem.id);
       if (globalIndex != -1) _items[globalIndex] = updatedItem;
-      
+
       _repository.updateItem(updatedItem);
     }
-    
+
     // Re-sort master list and notify UI immediately
     _items.sort((a, b) {
       int cmp = a.sortOrder.compareTo(b.sortOrder);
       if (cmp == 0) return a.name.compareTo(b.name);
       return cmp;
     });
-    
+
     notifyListeners();
   }
 
