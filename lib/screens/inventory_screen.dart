@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/settings_provider.dart';
 import '../widgets/item_tile.dart';
 import 'cart_history_screen.dart';
 import 'cart_details_screen.dart';
@@ -250,7 +251,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ],
           ],
         ),
-        body: _buildBody(inventory),
+        body: SafeArea(top: false, child: _buildBody(inventory)),
         drawer: Drawer(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -339,6 +340,29 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       leading: const Icon(Icons.settings),
                       title: const Text('Settings'),
                       children: [
+                        if (auth.user?.email != null)
+                          ListTile(
+                            contentPadding: const EdgeInsets.only(left: 32, right: 16),
+                            leading: const Icon(Icons.email_outlined, size: 20, color: Colors.grey),
+                            title: Text(
+                              auth.user!.email!,
+                              style: const TextStyle(fontSize: 13, color: Colors.grey),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            dense: true,
+                          ),
+                        Consumer<SettingsProvider>(
+                          builder: (context, settings, _) => SwitchListTile(
+                            contentPadding: const EdgeInsets.only(left: 32, right: 16),
+                            secondary: const Icon(Icons.touch_app_outlined, size: 20),
+                            title: const Text('Ask quantity when adding to cart', style: TextStyle(fontSize: 14)),
+                            value: settings.showQuantityPopup,
+                            onChanged: settings.setShowQuantityPopup,
+                            dense: true,
+                            activeThumbColor: Colors.deepOrange,
+                            activeTrackColor: Colors.deepOrange.withValues(alpha: 0.4),
+                          ),
+                        ),
                         ListTile(
                           contentPadding: const EdgeInsets.only(left: 32),
                           leading: const Icon(Icons.download),

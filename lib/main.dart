@@ -7,6 +7,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'providers/auth_provider.dart';
 import 'providers/inventory_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/settings_provider.dart';
+import 'services/hive_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/inventory_screen.dart';
 
@@ -17,6 +19,7 @@ void main() async {
 
   // Hive Init
   await Hive.initFlutter();
+  await Hive.openBox(HiveService.boxPreferences);
 
   // Firebase Init
   try {
@@ -37,6 +40,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProxyProvider<AuthProvider, InventoryProvider>(
           create: (_) => InventoryProvider(),
@@ -57,10 +61,10 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'RamenOps',
+        title: 'StockSmart',
         theme: ThemeData.dark(useMaterial3: true).copyWith(
           colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.deepOrange, // Ramen Broth Color
+            seedColor: Colors.deepOrange,
             brightness: Brightness.dark,
           ),
           scaffoldBackgroundColor: const Color(0xFF1E1E1E), // Slate Grey

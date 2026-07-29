@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' hide Category;
 import '../models/grocery_item.dart';
 import '../models/category_model.dart';
 import '../models/supplier_model.dart';
@@ -51,52 +52,59 @@ class GroceryRepository {
     final service = _firestoreService;
     if (service == null) return;
 
-    _subscriptions.add(service.getItemsStream().listen((remoteItems) async {
-      final localItems = _hiveService.getItems();
-      final remoteIds = remoteItems.map((i) => i.id).toSet();
-      
-      // 1. Delete local items that are no longer in remote
-      for (final localItem in localItems) {
-        if (!remoteIds.contains(localItem.id)) {
-          await _hiveService.deleteItem(localItem.id);
+    _subscriptions.add(service.getItemsStream().listen(
+      (remoteItems) async {
+        final localItems = _hiveService.getItems();
+        final remoteIds = remoteItems.map((i) => i.id).toSet();
+
+        for (final localItem in localItems) {
+          if (!remoteIds.contains(localItem.id)) {
+            await _hiveService.deleteItem(localItem.id);
+          }
         }
-      }
-      // 2. Save/Update remote items
-      for (var remoteItem in remoteItems) {
-        await _hiveService.saveItem(remoteItem);
-      }
-      onSyncUpdated?.call();
-    }));
-
-    _subscriptions.add(service.getCategoriesStream().listen((remoteCats) async {
-      final localCats = _hiveService.getCategories();
-      final remoteIds = remoteCats.map((c) => c.id).toSet();
-
-      for (final localCat in localCats) {
-        if (!remoteIds.contains(localCat.id)) {
-          await _hiveService.deleteCategory(localCat.id);
+        for (var remoteItem in remoteItems) {
+          await _hiveService.saveItem(remoteItem);
         }
-      }
-      for (var remoteCat in remoteCats) {
-        await _hiveService.saveCategory(remoteCat);
-      }
-      onSyncUpdated?.call();
-    }));
+        onSyncUpdated?.call();
+      },
+      onError: (e) => debugPrint('GroceryRepository: items stream error: $e'),
+    ));
 
-    _subscriptions.add(service.getSuppliersStream().listen((remoteSups) async {
-      final localSups = _hiveService.getSuppliers();
-      final remoteIds = remoteSups.map((s) => s.id).toSet();
+    _subscriptions.add(service.getCategoriesStream().listen(
+      (remoteCats) async {
+        final localCats = _hiveService.getCategories();
+        final remoteIds = remoteCats.map((c) => c.id).toSet();
 
-      for (final localSup in localSups) {
-        if (!remoteIds.contains(localSup.id)) {
-          await _hiveService.deleteSupplier(localSup.id);
+        for (final localCat in localCats) {
+          if (!remoteIds.contains(localCat.id)) {
+            await _hiveService.deleteCategory(localCat.id);
+          }
         }
-      }
-      for (var remoteSup in remoteSups) {
-        await _hiveService.saveSupplier(remoteSup);
-      }
-      onSyncUpdated?.call();
-    }));
+        for (var remoteCat in remoteCats) {
+          await _hiveService.saveCategory(remoteCat);
+        }
+        onSyncUpdated?.call();
+      },
+      onError: (e) => debugPrint('GroceryRepository: categories stream error: $e'),
+    ));
+
+    _subscriptions.add(service.getSuppliersStream().listen(
+      (remoteSups) async {
+        final localSups = _hiveService.getSuppliers();
+        final remoteIds = remoteSups.map((s) => s.id).toSet();
+
+        for (final localSup in localSups) {
+          if (!remoteIds.contains(localSup.id)) {
+            await _hiveService.deleteSupplier(localSup.id);
+          }
+        }
+        for (var remoteSup in remoteSups) {
+          await _hiveService.saveSupplier(remoteSup);
+        }
+        onSyncUpdated?.call();
+      },
+      onError: (e) => debugPrint('GroceryRepository: suppliers stream error: $e'),
+    ));
   }
 
   void dispose() {

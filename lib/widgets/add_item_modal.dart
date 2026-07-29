@@ -39,7 +39,9 @@ class _AddItemModalState extends State<AddItemModal> {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).padding.bottom +
+            20,
         top: 20,
         left: 20,
         right: 20,

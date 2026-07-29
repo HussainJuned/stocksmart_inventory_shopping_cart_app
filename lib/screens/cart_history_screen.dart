@@ -14,7 +14,7 @@ class CartHistoryScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Shopping History')),
-      body: SingleChildScrollView(
+      body: SafeArea(top: false, child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -139,7 +139,7 @@ class CartHistoryScreen extends StatelessWidget {
               ),
           ],
         ),
-      ),
+      )),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: Colors.orange,
         icon: const Icon(Icons.add_shopping_cart, color: Colors.white),

@@ -10,6 +10,7 @@ class HiveService {
   static const String boxSuppliers = 'suppliers';
   static const String boxShoppingLists = 'shopping_lists';
   static const String boxCartItems = 'cart_items';
+  static const String boxPreferences = 'preferences';
 
   Future<void> init() async {
     await Hive.initFlutter();
@@ -18,6 +19,9 @@ class HiveService {
     await Hive.openBox<Map>(boxSuppliers);
     await Hive.openBox<Map>(boxShoppingLists);
     await Hive.openBox<Map>(boxCartItems);
+    if (!Hive.isBoxOpen(boxPreferences)) {
+      await Hive.openBox(boxPreferences);
+    }
   }
 
   Future<void> clearAll() async {
@@ -26,6 +30,16 @@ class HiveService {
     await Hive.box<Map>(boxSuppliers).clear();
     await Hive.box<Map>(boxShoppingLists).clear();
     await Hive.box<Map>(boxCartItems).clear();
+    // Preferences are intentionally not cleared on logout — they are device-level settings.
+  }
+
+  // --- Preferences ---
+  dynamic getPreference(String key, {dynamic defaultValue}) {
+    return Hive.box(boxPreferences).get(key, defaultValue: defaultValue);
+  }
+
+  Future<void> setPreference(String key, dynamic value) async {
+    await Hive.box(boxPreferences).put(key, value);
   }
 
   // --- Items ---

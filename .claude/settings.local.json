@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"d:\\\\Web-Projects\\\\2025\\\\grocery_list_app\" -Recurse -Force)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(where adb *)",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(flutter build *)"
+    ]
+  }
+}

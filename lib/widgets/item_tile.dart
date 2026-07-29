@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/grocery_item.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/settings_provider.dart';
 import '../widgets/add_item_modal.dart';
 
 class ItemTile extends StatelessWidget {
@@ -138,7 +139,20 @@ class ItemTile extends StatelessWidget {
                         }
                         
                         return GestureDetector(
-                          onTap: () => _showAddToCartDialog(context, cart, item),
+                          onTap: () {
+                            final settings = Provider.of<SettingsProvider>(context, listen: false);
+                            if (settings.showQuantityPopup) {
+                              _showAddToCartDialog(context, cart, item);
+                            } else {
+                              cart.addItemToCart(item.id, 1.0);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('${item.name} added to cart'),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            }
+                          },
                           child: Container(
                             width: 38,
                             height: 38,

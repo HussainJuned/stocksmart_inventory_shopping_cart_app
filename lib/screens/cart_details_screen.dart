@@ -285,8 +285,12 @@ class CartDetailsScreen extends StatelessWidget {
                 );
               },
             ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        left: false,
+        right: false,
+        child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         decoration: BoxDecoration(
           color: Theme.of(context).scaffoldBackgroundColor,
         ),
@@ -396,6 +400,7 @@ class CartDetailsScreen extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

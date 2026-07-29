@@ -25,7 +25,7 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Manage Items')),
-      body: Column(
+      body: SafeArea(top: false, child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -94,7 +94,7 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
                   ),
           ),
         ],
-      ),
+      )),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _addNewItem(context),
         child: const Icon(Icons.add),

@@ -128,6 +128,9 @@ class _CartSearchModalState extends State<CartSearchModal> {
           // List Items
           Expanded(
             child: ListView.separated(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).padding.bottom + 8,
+              ),
               itemCount: displayList.length,
               separatorBuilder: (ctx, i) =>
                   const Divider(height: 1, color: Colors.white10),

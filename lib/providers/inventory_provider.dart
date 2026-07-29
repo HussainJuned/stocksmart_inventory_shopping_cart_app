@@ -27,20 +27,21 @@ class InventoryProvider extends ChangeNotifier {
 
   // Called when Auth changes (ProxyProvider)
   void update(String? userId) {
-    // If we have a user, we attach Firestore
+    // Cancel old Firestore subscriptions before replacing the repository.
+    // Without this, stale stream listeners pile up and fight each other.
+    _repository.dispose();
+
     FirestoreService? firestoreService;
     if (userId != null) {
       firestoreService = FirestoreService(userId: userId);
     }
 
-    // Create new repo with correct auth context
     _repository = GroceryRepository(
-      HiveService(), 
+      HiveService(),
       firestoreService,
       onSyncUpdated: _fetchLocal,
     );
 
-    // Init and fetch
     _init();
   }
 
@@ -99,6 +100,37 @@ class InventoryProvider extends ChangeNotifier {
   Future<void> deleteCategory(String id) async {
     await _repository.deleteCategory(id);
     _fetchLocal();
+  }
+
+  Future<void> reorderCategory(int oldIndex, int newIndex) async {
+    // ReorderableListView reports newIndex after removal, so adjust
+    if (oldIndex < newIndex) newIndex -= 1;
+    if (oldIndex == newIndex) return;
+
+    final reordered = List<Category>.from(_categories);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+
+    // Re-assign sequential sortOrder values
+    for (int i = 0; i < reordered.length; i++) {
+      final cat = reordered[i];
+      if (cat.sortOrder != i) {
+        final updated = Category(
+          id: cat.id,
+          name: cat.name,
+          color: cat.color,
+          sortOrder: i,
+        );
+        reordered[i] = updated;
+        _repository.updateCategory(updated);
+      }
+    }
+
+    _categories
+      ..clear()
+      ..addAll(reordered);
+
+    notifyListeners();
   }
 
   Future<void> updateItemQuantity(String id, double newQty) async {

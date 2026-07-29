@@ -14,9 +14,11 @@ class SupplierManagerScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Manage Suppliers')),
-      body: suppliers.isEmpty
-          ? const Center(child: Text('No suppliers added yet.'))
-          : ListView.builder(
+      body: SafeArea(
+        top: false,
+        child: suppliers.isEmpty
+            ? const Center(child: Text('No suppliers added yet.'))
+            : ListView.builder(
               itemCount: suppliers.length,
               itemBuilder: (ctx, i) {
                 final supplier = suppliers[i];
@@ -54,6 +56,7 @@ class SupplierManagerScreen extends StatelessWidget {
                 );
               },
             ),
+      ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.orange,
         child: const Icon(Icons.add, color: Colors.white),

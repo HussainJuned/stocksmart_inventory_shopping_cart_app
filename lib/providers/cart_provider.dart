@@ -10,6 +10,7 @@ class CartProvider extends ChangeNotifier {
   final HiveService _hiveService = HiveService();
   FirestoreService? _firestoreService;
   final List<StreamSubscription> _subscriptions = [];
+  String? _currentUserId;
 
   final List<ShoppingList> _lists = [];
   final Map<String, List<CartItem>> _listItems = {}; // listId -> items
@@ -38,7 +39,9 @@ class CartProvider extends ChangeNotifier {
   }
 
   void updateAuth(String? userId) {
-    // Clear old subscriptions
+    if (_currentUserId == userId) return;
+    _currentUserId = userId;
+
     for (var sub in _subscriptions) {
       sub.cancel();
     }
@@ -55,39 +58,41 @@ class CartProvider extends ChangeNotifier {
   void _syncFromRemote() {
     if (_firestoreService == null) return;
 
-    _subscriptions.add(_firestoreService!.getShoppingListsStream().listen((remoteLists) async {
-      final localLists = _hiveService.getShoppingLists();
-      final remoteIds = remoteLists.map((l) => l.id).toSet();
+    _subscriptions.add(_firestoreService!.getShoppingListsStream().listen(
+      (remoteLists) async {
+        final localLists = _hiveService.getShoppingLists();
+        final remoteIds = remoteLists.map((l) => l.id).toSet();
 
-      // 1. Delete local lists that are no longer in remote
-      for (final localList in localLists) {
-        if (!remoteIds.contains(localList.id)) {
-          await _hiveService.deleteShoppingList(localList.id);
+        for (final localList in localLists) {
+          if (!remoteIds.contains(localList.id)) {
+            await _hiveService.deleteShoppingList(localList.id);
+          }
         }
-      }
-      // 2. Save/Update remote lists
-      for (var list in remoteLists) {
-        await _hiveService.saveShoppingList(list);
-      }
-      _loadFromHive();
-    }));
-
-    _subscriptions.add(_firestoreService!.getCartItemsStream().listen((remoteItems) async {
-      final localItems = _hiveService.getCartItems();
-      final remoteIds = remoteItems.map((i) => i.id).toSet();
-
-      // 1. Delete local items that are no longer in remote
-      for (final localItem in localItems) {
-        if (!remoteIds.contains(localItem.id)) {
-          await _hiveService.deleteCartItem(localItem.id);
+        for (var list in remoteLists) {
+          await _hiveService.saveShoppingList(list);
         }
-      }
-      // 2. Save/Update remote items
-      for (var item in remoteItems) {
-        await _hiveService.saveCartItem(item);
-      }
-      _loadFromHive();
-    }));
+        _loadFromHive();
+      },
+      onError: (e) => debugPrint('CartProvider: shopping lists stream error: $e'),
+    ));
+
+    _subscriptions.add(_firestoreService!.getCartItemsStream().listen(
+      (remoteItems) async {
+        final localItems = _hiveService.getCartItems();
+        final remoteIds = remoteItems.map((i) => i.id).toSet();
+
+        for (final localItem in localItems) {
+          if (!remoteIds.contains(localItem.id)) {
+            await _hiveService.deleteCartItem(localItem.id);
+          }
+        }
+        for (var item in remoteItems) {
+          await _hiveService.saveCartItem(item);
+        }
+        _loadFromHive();
+      },
+      onError: (e) => debugPrint('CartProvider: cart items stream error: $e'),
+    ));
   }
 
   void updateInventory(InventoryProvider newInventory) {
@@ -158,9 +163,11 @@ class CartProvider extends ChangeNotifier {
 
     // Save to Hive
     await _hiveService.saveShoppingList(newCart);
-    _firestoreService?.saveShoppingList(newCart);
+    _firestoreService?.saveShoppingList(newCart).catchError(
+      (e) => debugPrint('CartProvider: saveShoppingList error: $e'),
+    );
 
-    notifyListeners();
+    await _loadFromHive();
   }
 
   Future<void> archiveCart(String cartId) async {
@@ -183,22 +190,23 @@ class CartProvider extends ChangeNotifier {
     final cart = activeCart!;
     final item = _inventory.items.firstWhere((i) => i.id == itemId);
 
-    // 2. Check if already in list
-    List<CartItem> currentItems = _listItems[cart.id] ?? [];
+    // 2. Ensure the list entry exists (createNewCart or _loadFromHive may have cleared it)
     if (!_listItems.containsKey(cart.id)) {
-      _listItems[cart.id] = currentItems;
+      _listItems[cart.id] = [];
     }
 
-    final index = currentItems.indexWhere((i) => i.itemId == itemId);
+    final index = _listItems[cart.id]!.indexWhere((i) => i.itemId == itemId);
     if (index != -1) {
       // Update quantity
-      final old = currentItems[index];
-      currentItems[index] = old.copyWith(
+      final old = _listItems[cart.id]![index];
+      _listItems[cart.id]![index] = old.copyWith(
         quantityNeeded: old.quantityNeeded + quantity,
         state: CartItemState.pending,
       );
-      await _hiveService.saveCartItem(currentItems[index]);
-      _firestoreService?.saveCartItem(currentItems[index]);
+      await _hiveService.saveCartItem(_listItems[cart.id]![index]);
+      _firestoreService?.saveCartItem(_listItems[cart.id]![index]).catchError(
+        (e) => debugPrint('CartProvider: saveCartItem error: $e'),
+      );
     } else {
       // Add new
       final newCartItem = CartItem.create(
@@ -209,11 +217,15 @@ class CartProvider extends ChangeNotifier {
         quantityNeeded: quantity,
         unit: item.unit,
       );
-      currentItems.add(newCartItem);
       await _hiveService.saveCartItem(newCartItem);
-      _firestoreService?.saveCartItem(newCartItem);
+      _firestoreService?.saveCartItem(newCartItem).catchError(
+        (e) => debugPrint('CartProvider: saveCartItem error: $e'),
+      );
     }
-    notifyListeners();
+    // Reload from Hive so _listItems always reflects persisted state,
+    // regardless of any _loadFromHive() calls triggered by stream callbacks
+    // that may have run during the awaits above.
+    await _loadFromHive();
   }
 
   void updateItemState(

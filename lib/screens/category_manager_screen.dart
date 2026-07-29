@@ -13,15 +13,16 @@ class CategoryManagerScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Manage Categories')),
-      body: categories.isEmpty
-          ? const Center(child: Text('No categories yet.'))
-          : ReorderableListView.builder(
+      body: SafeArea(
+        top: false,
+        child: categories.isEmpty
+            ? const Center(child: Text('No categories yet.'))
+            : ReorderableListView.builder(
               padding: const EdgeInsets.only(bottom: 80),
               itemCount: categories.length,
               onReorder: (oldIndex, newIndex) {
-                // Reorder logic could go here if we want to support it
-                // For now, just a placeholder as we use sortOrder logic in provider
-                // inventory.reorderCategory(oldIndex, newIndex);
+                Provider.of<InventoryProvider>(context, listen: false)
+                    .reorderCategory(oldIndex, newIndex);
               },
               itemBuilder: (context, index) {
                 final category = categories[index];
@@ -45,6 +46,7 @@ class CategoryManagerScreen extends StatelessWidget {
                 );
               },
             ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddDialog(context),
         child: const Icon(Icons.add),
