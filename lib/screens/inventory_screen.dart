@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../providers/auth_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/cart_provider.dart';
@@ -153,6 +155,47 @@ class _InventoryScreenState extends State<InventoryScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _exportToJson(BuildContext context) {
+    final inventory = Provider.of<InventoryProvider>(context, listen: false);
+    final jsonString = inventory.exportToJson();
+
+    try {
+      Share.share(
+        jsonString,
+        subject:
+            'StockSmart Backup – ${DateTime.now().toLocal().toString().substring(0, 10)}',
+      );
+    } catch (_) {
+      // Web / share unavailable – show copy dialog
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Export JSON'),
+          content: SingleChildScrollView(child: SelectableText(jsonString)),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: jsonString));
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('JSON copied to clipboard!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+              child: const Text('Copy'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   @override
@@ -398,6 +441,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           onTap: () {
                             Navigator.pop(context); // Close Drawer
                             _showImportDialog(context);
+                          },
+                        ),
+                        ListTile(
+                          contentPadding: const EdgeInsets.only(left: 32),
+                          leading: const Icon(Icons.upload),
+                          title: const Text('Export to JSON'),
+                          subtitle: const Text(
+                            'Backup all items, categories & suppliers',
+                            style: TextStyle(fontSize: 11),
+                          ),
+                          onTap: () {
+                            Navigator.pop(context);
+                            _exportToJson(context);
                           },
                         ),
                         /* ListTile(

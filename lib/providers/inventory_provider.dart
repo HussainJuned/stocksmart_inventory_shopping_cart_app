@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart' hide Category;
 import '../models/grocery_item.dart';
 import '../models/category_model.dart';
@@ -258,6 +259,41 @@ class InventoryProvider extends ChangeNotifier {
     final importService = BulkImportService(_repository);
     await importService.importFromJson(jsonString);
     _fetchLocal();
+  }
+
+  /// Exports all categories, suppliers, and items to a pretty-printed JSON
+  /// string that is fully compatible with the import format.
+  String exportToJson() {
+    final categoryIdToName = {for (var c in _categories) c.id: c.name};
+    final supplierIdToName = {for (var s in _suppliers) s.id: s.name};
+
+    final data = {
+      'exportedAt': DateTime.now().toIso8601String(),
+      'categories': _categories
+          .map((c) => {'name': c.name, 'color': c.color})
+          .toList(),
+      'suppliers': _suppliers.map((s) => {'name': s.name}).toList(),
+      'items': _items
+          .map(
+            (item) => {
+              'name': item.name,
+              'categoryNames': item.categoryIds
+                  .map((id) => categoryIdToName[id])
+                  .whereType<String>()
+                  .toList(),
+              'supplierName': item.defaultSupplierId != null
+                  ? supplierIdToName[item.defaultSupplierId]
+                  : null,
+              'unit': item.unit,
+              'parLevel': item.parLevel,
+              'currentQuantity': item.currentQuantity,
+            },
+          )
+          .toList(),
+    };
+
+    const encoder = JsonEncoder.withIndent('  ');
+    return encoder.convert(data);
   }
 
   Future<void> resetEverything() async {
