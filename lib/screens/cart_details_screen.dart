@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
@@ -146,6 +147,24 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
       }
     }
 
+    // Pre-compute flat item+sub-header data per group (used by SliverList)
+    final flatGroupItems = <String, List<Object>>{};
+    for (final key in sortedKeys) {
+      final groupItems = groupedItems[key]!;
+      final flat = <Object>[];
+      String? lastSubKey;
+      for (int i = 0; i < groupItems.length; i++) {
+        final item = groupItems[i];
+        final subKey = _getSubKey(item, inventoryProvider);
+        if (subKey != lastSubKey) {
+          lastSubKey = subKey;
+          flat.add(_SubHeaderData(subKey));
+        }
+        flat.add(item);
+      }
+      flatGroupItems[key] = flat;
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Order Details'),
@@ -193,49 +212,64 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
       ),
       body: items.isEmpty
           ? const Center(child: Text('Empty List'))
-          : ListView.builder(
-              padding: const EdgeInsets.only(bottom: 150),
-              itemCount: sortedKeys.length,
-              itemBuilder: (context, groupIndex) {
-                final key = sortedKeys[groupIndex];
-                final groupItems = groupedItems[key]!;
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildGroupHeader(
-                      groupIndex: groupIndex,
-                      groupKey: key,
-                      itemCount: groupItems.length,
+          : CustomScrollView(
+              slivers: [
+                for (int gi = 0; gi < sortedKeys.length; gi++) ...[
+                  SliverToBoxAdapter(
+                    child: _buildGroupHeader(
+                      groupIndex: gi,
+                      groupKey: sortedKeys[gi],
+                      pendingCount: groupedItems[sortedKeys[gi]]!
+                          .where((i) => i.state == CartItemState.pending)
+                          .length,
+                      itemCount: groupedItems[sortedKeys[gi]]!.length,
                       getSupplierName: getSupplierName,
                       getCategoryName: getCategoryName,
                       getCategoryColor: getCategoryColor,
                     ),
-                    ...groupItems.asMap().entries.expand((entry) {
-                      final index = entry.key;
-                      final item = entry.value;
-                      final subKey = _getSubKey(item, inventoryProvider);
-                      final isFirstInSubGroup =
-                          index == 0 ||
-                          _getSubKey(
-                                groupItems[index - 1],
-                                inventoryProvider,
-                              ) !=
-                              subKey;
+                  ),
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final key = sortedKeys[gi];
+                      final entry = flatGroupItems[key]![index];
+                      if (entry is _SubHeaderData) {
+                        return _buildSubGroupHeader(
+                          entry.subKey,
+                          getSupplierName,
+                          getCategoryName,
+                          getCategoryColor,
+                        );
+                      }
+                      final item = entry as CartItem;
                       final isBought = item.state == CartItemState.bought;
                       final isSkipped = item.state == CartItemState.skipped;
                       final isUnavailable =
                           item.state == CartItemState.unavailable;
-
-                      final card = Padding(
+                      return Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 6,
                         ),
                         child: Dismissible(
                           key: Key(item.id),
-                          direction: DismissDirection.endToStart,
+                          direction: DismissDirection.horizontal,
+                          // Swipe right: toggle bought/pending
                           background: Container(
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.only(left: 20),
+                            decoration: BoxDecoration(
+                              color: isBought
+                                  ? Colors.orange.withOpacity(0.8)
+                                  : Colors.green.withOpacity(0.8),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Icon(
+                              isBought ? Icons.refresh : Icons.check,
+                              color: Colors.white,
+                            ),
+                          ),
+                          // Swipe left: delete
+                          secondaryBackground: Container(
                             alignment: Alignment.centerRight,
                             padding: const EdgeInsets.only(right: 20),
                             decoration: BoxDecoration(
@@ -247,14 +281,47 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                               color: Colors.white,
                             ),
                           ),
+                          confirmDismiss: (direction) async {
+                            if (direction == DismissDirection.startToEnd) {
+                              HapticFeedback.mediumImpact();
+                              cartProvider.updateItemState(
+                                widget.listId,
+                                item.id,
+                                isBought
+                                    ? CartItemState.pending
+                                    : CartItemState.bought,
+                              );
+                              return false;
+                            }
+                            return true;
+                          },
                           onDismissed: (_) {
+                            final removed = item;
                             cartProvider.removeItemFromCart(
                               widget.listId,
                               item.id,
                             );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Removed ${item.name}')),
-                            );
+                            ScaffoldMessenger.of(context)
+                              ..hideCurrentSnackBar()
+                              ..showSnackBar(
+                                SnackBar(
+                                  content: Text('${removed.name} removed'),
+                                  action: SnackBarAction(
+                                    label: 'Undo',
+                                    onPressed: () {
+                                      Provider.of<CartProvider>(
+                                        context,
+                                        listen: false,
+                                      ).restoreCartItem(removed);
+                                    },
+                                  ),
+                                  duration: const Duration(seconds: 4),
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              );
                           },
                           child: Container(
                             decoration: BoxDecoration(
@@ -296,13 +363,13 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                       children: [
                                         GestureDetector(
                                           onTap: () {
-                                            final newState = isBought
-                                                ? CartItemState.pending
-                                                : CartItemState.bought;
+                                            HapticFeedback.lightImpact();
                                             cartProvider.updateItemState(
                                               widget.listId,
                                               item.id,
-                                              newState,
+                                              isBought
+                                                  ? CartItemState.pending
+                                                  : CartItemState.bought,
                                             );
                                           },
                                           child: Container(
@@ -445,22 +512,11 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                           ),
                         ),
                       );
-                      return isFirstInSubGroup
-                          ? [
-                              _buildSubGroupHeader(
-                                subKey,
-                                getSupplierName,
-                                getCategoryName,
-                                getCategoryColor,
-                              ),
-                              card,
-                            ]
-                          : [card];
-                    }),
-                    const SizedBox(height: 16),
-                  ],
-                );
-              },
+                    }, childCount: flatGroupItems[sortedKeys[gi]]!.length),
+                  ),
+                ],
+                const SliverToBoxAdapter(child: SizedBox(height: 150)),
+              ],
             ),
       bottomNavigationBar: SafeArea(
         top: false,
@@ -600,6 +656,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
   Widget _buildGroupHeader({
     required int groupIndex,
     required String groupKey,
+    required int pendingCount,
     required int itemCount,
     required String Function(String) getSupplierName,
     required String Function(String) getCategoryName,
@@ -612,6 +669,13 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
     final accent = isCategory
         ? getCategoryColor(groupKey)
         : Colors.orange.withOpacity(0.8);
+
+    final badgeText = pendingCount == itemCount
+        ? '$itemCount ITEMS'
+        : '$pendingCount / $itemCount PENDING';
+    final badgeColor = pendingCount < itemCount
+        ? Colors.orange.withOpacity(0.7)
+        : Colors.white.withOpacity(0.4);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -658,11 +722,11 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              '$itemCount ITEMS',
+              badgeText,
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color: Colors.white.withOpacity(0.4),
+                color: badgeColor,
               ),
             ),
           ),
@@ -1233,4 +1297,10 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
     if (value % 1 == 0) return value.toInt().toString();
     return value.toString();
   }
+}
+
+// ── Marker for sub-group header rows in flat item lists ──────────────────────
+class _SubHeaderData {
+  final String subKey;
+  const _SubHeaderData(this.subKey);
 }

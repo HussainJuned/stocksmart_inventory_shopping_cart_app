@@ -58,41 +58,46 @@ class CartProvider extends ChangeNotifier {
   void _syncFromRemote() {
     if (_firestoreService == null) return;
 
-    _subscriptions.add(_firestoreService!.getShoppingListsStream().listen(
-      (remoteLists) async {
-        final localLists = _hiveService.getShoppingLists();
-        final remoteIds = remoteLists.map((l) => l.id).toSet();
+    _subscriptions.add(
+      _firestoreService!.getShoppingListsStream().listen(
+        (remoteLists) async {
+          final localLists = _hiveService.getShoppingLists();
+          final remoteIds = remoteLists.map((l) => l.id).toSet();
 
-        for (final localList in localLists) {
-          if (!remoteIds.contains(localList.id)) {
-            await _hiveService.deleteShoppingList(localList.id);
+          for (final localList in localLists) {
+            if (!remoteIds.contains(localList.id)) {
+              await _hiveService.deleteShoppingList(localList.id);
+            }
           }
-        }
-        for (var list in remoteLists) {
-          await _hiveService.saveShoppingList(list);
-        }
-        _loadFromHive();
-      },
-      onError: (e) => debugPrint('CartProvider: shopping lists stream error: $e'),
-    ));
-
-    _subscriptions.add(_firestoreService!.getCartItemsStream().listen(
-      (remoteItems) async {
-        final localItems = _hiveService.getCartItems();
-        final remoteIds = remoteItems.map((i) => i.id).toSet();
-
-        for (final localItem in localItems) {
-          if (!remoteIds.contains(localItem.id)) {
-            await _hiveService.deleteCartItem(localItem.id);
+          for (var list in remoteLists) {
+            await _hiveService.saveShoppingList(list);
           }
-        }
-        for (var item in remoteItems) {
-          await _hiveService.saveCartItem(item);
-        }
-        _loadFromHive();
-      },
-      onError: (e) => debugPrint('CartProvider: cart items stream error: $e'),
-    ));
+          _loadFromHive();
+        },
+        onError: (e) =>
+            debugPrint('CartProvider: shopping lists stream error: $e'),
+      ),
+    );
+
+    _subscriptions.add(
+      _firestoreService!.getCartItemsStream().listen(
+        (remoteItems) async {
+          final localItems = _hiveService.getCartItems();
+          final remoteIds = remoteItems.map((i) => i.id).toSet();
+
+          for (final localItem in localItems) {
+            if (!remoteIds.contains(localItem.id)) {
+              await _hiveService.deleteCartItem(localItem.id);
+            }
+          }
+          for (var item in remoteItems) {
+            await _hiveService.saveCartItem(item);
+          }
+          _loadFromHive();
+        },
+        onError: (e) => debugPrint('CartProvider: cart items stream error: $e'),
+      ),
+    );
   }
 
   void updateInventory(InventoryProvider newInventory) {
@@ -163,9 +168,11 @@ class CartProvider extends ChangeNotifier {
 
     // Save to Hive
     await _hiveService.saveShoppingList(newCart);
-    _firestoreService?.saveShoppingList(newCart).catchError(
-      (e) => debugPrint('CartProvider: saveShoppingList error: $e'),
-    );
+    _firestoreService
+        ?.saveShoppingList(newCart)
+        .catchError(
+          (e) => debugPrint('CartProvider: saveShoppingList error: $e'),
+        );
 
     await _loadFromHive();
   }
@@ -204,9 +211,11 @@ class CartProvider extends ChangeNotifier {
         state: CartItemState.pending,
       );
       await _hiveService.saveCartItem(_listItems[cart.id]![index]);
-      _firestoreService?.saveCartItem(_listItems[cart.id]![index]).catchError(
-        (e) => debugPrint('CartProvider: saveCartItem error: $e'),
-      );
+      _firestoreService
+          ?.saveCartItem(_listItems[cart.id]![index])
+          .catchError(
+            (e) => debugPrint('CartProvider: saveCartItem error: $e'),
+          );
     } else {
       // Add new
       final newCartItem = CartItem.create(
@@ -218,9 +227,11 @@ class CartProvider extends ChangeNotifier {
         unit: item.unit,
       );
       await _hiveService.saveCartItem(newCartItem);
-      _firestoreService?.saveCartItem(newCartItem).catchError(
-        (e) => debugPrint('CartProvider: saveCartItem error: $e'),
-      );
+      _firestoreService
+          ?.saveCartItem(newCartItem)
+          .catchError(
+            (e) => debugPrint('CartProvider: saveCartItem error: $e'),
+          );
     }
     // Reload from Hive so _listItems always reflects persisted state,
     // regardless of any _loadFromHive() calls triggered by stream callbacks
@@ -265,6 +276,17 @@ class CartProvider extends ChangeNotifier {
       items.removeWhere((i) => i.id == itemId);
       await _hiveService.deleteCartItem(removedItem.id);
       _firestoreService?.deleteCartItem(removedItem.id);
+      notifyListeners();
+    }
+  }
+
+  /// Restores a previously removed CartItem (used by undo-delete).
+  Future<void> restoreCartItem(CartItem item) async {
+    final listItems = _listItems.putIfAbsent(item.listId, () => []);
+    if (!listItems.any((i) => i.id == item.id)) {
+      listItems.add(item);
+      await _hiveService.saveCartItem(item);
+      _firestoreService?.saveCartItem(item);
       notifyListeners();
     }
   }
