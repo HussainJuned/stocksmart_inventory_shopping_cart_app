@@ -1,9 +1,9 @@
-# RamenOps: Ramen Shop Inventory & Grocery App
+# StockSmart: Ramen Shop Inventory & Grocery App
 
 A specialized inventory management system built for Ramen shops to streamline stock checks and automate ordering.
 
 ## 🚀 Application Context
-**RamenOps** resolves the chaos of manual inventory taking (often done on paper or mental notes) by providing a fast, tailored mobile/web app. It helps staff:
+**StockSmart** resolves the chaos of manual inventory taking (often done on paper or mental notes) by providing a fast, tailored mobile/web app. It helps staff:
 1.  **Count Stock** efficiently using simple +/- steppers.
 2.  **Identify Shortages** by comparing current stock vs. "Par Levels" (Minimum required stock).
 3.  **Automate Ordering** by generating shopping lists based on missing quantities.

@@ -86,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    _isRegistering ? 'Register Restaurant' : 'RamenOps',
+                    _isRegistering ? 'Register Restaurant' : 'StockSmart',
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,

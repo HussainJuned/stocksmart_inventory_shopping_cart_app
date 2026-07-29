@@ -7,49 +7,130 @@ import '../providers/cart_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../widgets/cart_search_modal.dart';
 
-class CartDetailsScreen extends StatelessWidget {
+enum _GroupBy { supplier, category }
+
+class CartDetailsScreen extends StatefulWidget {
   final String listId;
   const CartDetailsScreen({super.key, required this.listId});
+
+  @override
+  State<CartDetailsScreen> createState() => _CartDetailsScreenState();
+}
+
+class _CartDetailsScreenState extends State<CartDetailsScreen> {
+  _GroupBy _groupBy = _GroupBy.supplier;
 
   @override
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
     final inventoryProvider = Provider.of<InventoryProvider>(context);
 
-    final items = cartProvider.getItemsForList(listId);
+    final items = cartProvider.getItemsForList(widget.listId);
 
-    // Grouping Logic
-    final Map<String, List<CartItem>> groupedItems = {};
-    for (var item in items) {
-      final supplierId = item.supplierId ?? 'unknown';
-      if (!groupedItems.containsKey(supplierId)) {
-        groupedItems[supplierId] = [];
-      }
-      groupedItems[supplierId]!.add(item);
-    }
-
-    // Get Supplier Names for headers
+    // ── Supplier helpers ────────────────────────────────────────────────────
     String getSupplierName(String id) {
       if (id == 'unknown') return 'No Supplier';
       try {
-        final supplier = inventoryProvider.suppliers.firstWhere(
-          (s) => s.id == id,
-        );
-        return supplier.name;
-      } catch (e) {
-        return 'Unknown Supplier ($id)';
+        return inventoryProvider.suppliers.firstWhere((s) => s.id == id).name;
+      } catch (_) {
+        return 'Unknown Supplier';
       }
     }
 
-    final sortedKeys = groupedItems.keys.toList()
-      ..sort((a, b) {
-        if (a == 'unknown') return 1; // Put unknown at bottom
-        if (b == 'unknown') return -1;
-        return getSupplierName(a).compareTo(getSupplierName(b));
-      });
+    // ── Category helpers ────────────────────────────────────────────────────
+    String getCategoryName(String id) {
+      if (id == 'uncategorized') return 'Uncategorized';
+      try {
+        return inventoryProvider.categories.firstWhere((c) => c.id == id).name;
+      } catch (_) {
+        return 'Unknown Category';
+      }
+    }
+
+    Color getCategoryColor(String id) {
+      if (id == 'uncategorized') return Colors.grey;
+      try {
+        final hex = inventoryProvider.categories
+            .firstWhere((c) => c.id == id)
+            .color
+            .replaceFirst('#', '');
+        return Color(int.parse('FF$hex', radix: 16));
+      } catch (_) {
+        return Colors.orange;
+      }
+    }
+
+    // ── Build grouped data based on mode ────────────────────────────────────
+    final Map<String, List<CartItem>> groupedItems = {};
+    List<String> sortedKeys;
+
+    if (_groupBy == _GroupBy.supplier) {
+      for (var item in items) {
+        final key = item.supplierId ?? 'unknown';
+        groupedItems.putIfAbsent(key, () => []).add(item);
+      }
+      sortedKeys = groupedItems.keys.toList()
+        ..sort((a, b) {
+          if (a == 'unknown') return 1;
+          if (b == 'unknown') return -1;
+          return getSupplierName(a).compareTo(getSupplierName(b));
+        });
+    } else {
+      for (var cartItem in items) {
+        String key = 'uncategorized';
+        try {
+          final gi = inventoryProvider.items.firstWhere((i) => i.id == cartItem.itemId);
+          if (gi.categoryIds.isNotEmpty) key = gi.categoryIds.first;
+        } catch (_) {}
+        groupedItems.putIfAbsent(key, () => []).add(cartItem);
+      }
+      sortedKeys = groupedItems.keys.toList()
+        ..sort((a, b) {
+          if (a == 'uncategorized') return 1;
+          if (b == 'uncategorized') return -1;
+          try {
+            final orderA =
+                inventoryProvider.categories.firstWhere((c) => c.id == a).sortOrder;
+            final orderB =
+                inventoryProvider.categories.firstWhere((c) => c.id == b).sortOrder;
+            return orderA.compareTo(orderB);
+          } catch (_) {
+            return 0;
+          }
+        });
+    }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Order Details')),
+      appBar: AppBar(
+        title: const Text('Order Details'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: SegmentedButton<_GroupBy>(
+              style: const ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              segments: const [
+                ButtonSegment(
+                  value: _GroupBy.supplier,
+                  icon: Icon(Icons.local_shipping_outlined, size: 16),
+                  label: Text('Supplier', style: TextStyle(fontSize: 11)),
+                ),
+                ButtonSegment(
+                  value: _GroupBy.category,
+                  icon: Icon(Icons.category_outlined, size: 16),
+                  label: Text('Category', style: TextStyle(fontSize: 11)),
+                ),
+              ],
+              selected: {_groupBy},
+              onSelectionChanged: (Set<_GroupBy> selection) {
+                setState(() => _groupBy = selection.first);
+              },
+            ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: Colors.deepOrange,
         foregroundColor: Colors.white,
@@ -58,7 +139,7 @@ class CartDetailsScreen extends StatelessWidget {
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            builder: (ctx) => CartSearchModal(listId: listId),
+            builder: (ctx) => CartSearchModal(listId: widget.listId),
           );
         },
         icon: const Icon(Icons.add),
@@ -70,55 +151,19 @@ class CartDetailsScreen extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 150),
               itemCount: sortedKeys.length,
               itemBuilder: (context, groupIndex) {
-                final supplierId = sortedKeys[groupIndex];
-                final groupItems = groupedItems[supplierId]!;
-                final supplierName = getSupplierName(supplierId);
+                final key = sortedKeys[groupIndex];
+                final groupItems = groupedItems[key]!;
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Premium Glass-Style Supplier Header
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.03),
-                        border: Border(
-                          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
-                          top: groupIndex == 0 
-                              ? BorderSide.none 
-                              : BorderSide(color: Colors.white.withOpacity(0.05)),
-                        ),
-                      ),
-                      width: double.infinity,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            supplierName.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.orange.withOpacity(0.8),
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '${groupItems.length} ITEMS',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white.withOpacity(0.4),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    _buildGroupHeader(
+                      groupIndex: groupIndex,
+                      groupKey: key,
+                      itemCount: groupItems.length,
+                      getSupplierName: getSupplierName,
+                      getCategoryName: getCategoryName,
+                      getCategoryColor: getCategoryColor,
                     ),
                     const SizedBox(height: 8),
                     ...groupItems.map((item) {
@@ -126,7 +171,6 @@ class CartDetailsScreen extends StatelessWidget {
                       final isSkipped = item.state == CartItemState.skipped;
                       final isUnavailable = item.state == CartItemState.unavailable;
 
-                      // Premium Card Style
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                         child: Dismissible(
@@ -142,7 +186,7 @@ class CartDetailsScreen extends StatelessWidget {
                             child: const Icon(Icons.delete_outline, color: Colors.white),
                           ),
                           onDismissed: (_) {
-                            cartProvider.removeItemFromCart(listId, item.id);
+                            cartProvider.removeItemFromCart(widget.listId, item.id);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Removed ${item.name}')),
                             );
@@ -152,9 +196,9 @@ class CartDetailsScreen extends StatelessWidget {
                               color: const Color(0xFF1E1E1E),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: isBought 
+                                color: isBought
                                     ? Colors.green.withOpacity(0.3)
-                                    : isUnavailable 
+                                    : isUnavailable
                                         ? Colors.red.withOpacity(0.3)
                                         : Colors.white.withOpacity(0.05),
                                 width: 1.5,
@@ -176,22 +220,22 @@ class CartDetailsScreen extends StatelessWidget {
                                       right: -10,
                                       bottom: -10,
                                       child: Icon(
-                                        Icons.check_circle, 
-                                        size: 80, 
-                                        color: Colors.green.withOpacity(0.05)
+                                        Icons.check_circle,
+                                        size: 80,
+                                        color: Colors.green.withOpacity(0.05),
                                       ),
                                     ),
                                   Padding(
                                     padding: const EdgeInsets.all(12.0),
                                     child: Row(
                                       children: [
-                                        // Status Toggle (Leading)
                                         GestureDetector(
                                           onTap: () {
                                             final newState = isBought
                                                 ? CartItemState.pending
                                                 : CartItemState.bought;
-                                            cartProvider.updateItemState(listId, item.id, newState);
+                                            cartProvider.updateItemState(
+                                                widget.listId, item.id, newState);
                                           },
                                           child: Container(
                                             padding: const EdgeInsets.all(4),
@@ -201,7 +245,9 @@ class CartDetailsScreen extends StatelessWidget {
                                                 color: isBought ? Colors.green : Colors.white24,
                                                 width: 2,
                                               ),
-                                              color: isBought ? Colors.green.withOpacity(0.1) : Colors.transparent,
+                                              color: isBought
+                                                  ? Colors.green.withOpacity(0.1)
+                                                  : Colors.transparent,
                                             ),
                                             child: Icon(
                                               isBought ? Icons.check : Icons.circle_outlined,
@@ -211,64 +257,77 @@ class CartDetailsScreen extends StatelessWidget {
                                           ),
                                         ),
                                         const SizedBox(width: 16),
-                                        // Item Info
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                item.name,
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isBought || isSkipped
+                                                      ? Colors.white38
+                                                      : Colors.white,
+                                                  decoration: (isBought || isSkipped)
+                                                      ? TextDecoration.lineThrough
+                                                      : null,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              GestureDetector(
+                                                onTap: () => _showEditStockDialog(
+                                                  context,
+                                                  inventoryProvider,
+                                                  item.itemId,
                                                   item.name,
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: isBought || isSkipped ? Colors.white38 : Colors.white,
-                                                    decoration: (isBought || isSkipped) ? TextDecoration.lineThrough : null,
+                                                  item.unit,
+                                                ),
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                      horizontal: 8, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white.withOpacity(0.05),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                    border: Border.all(
+                                                        color: Colors.white.withOpacity(0.1)),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment.start,
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          Text(
+                                                            'Stock: ${_formatQty(_getCurrentStock(inventoryProvider, item.itemId))}',
+                                                            style: TextStyle(
+                                                              fontSize: 10,
+                                                              fontWeight: FontWeight.w600,
+                                                              color:
+                                                                  Colors.white.withOpacity(0.4),
+                                                              letterSpacing: 0.2,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            item.unit,
+                                                            style: TextStyle(
+                                                              fontSize: 8,
+                                                              fontWeight: FontWeight.w400,
+                                                              color:
+                                                                  Colors.white.withOpacity(0.25),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
                                                   ),
                                                 ),
-                                                const SizedBox(height: 6),
-                                                // Subtle Interactive Stock
-                                                GestureDetector(
-                                                  onTap: () => _showEditStockDialog(context, inventoryProvider, item.itemId, item.name, item.unit),
-                                                  child: Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.white.withOpacity(0.05),
-                                                      borderRadius: BorderRadius.circular(6),
-                                                      border: Border.all(color: Colors.white.withOpacity(0.1)),
-                                                    ),
-                                                    child: Row(
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        Column(
-                                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                                          mainAxisSize: MainAxisSize.min,
-                                                          children: [
-                                                            Text(
-                                                              'Stock: ${_formatQty(_getCurrentStock(inventoryProvider, item.itemId))}',
-                                                              style: TextStyle(
-                                                                fontSize: 10,
-                                                                fontWeight: FontWeight.w600,
-                                                                color: Colors.white.withOpacity(0.4),
-                                                                letterSpacing: 0.2,
-                                                              ),
-                                                            ),
-                                                            Text(
-                                                              item.unit,
-                                                              style: TextStyle(
-                                                                fontSize: 8,
-                                                                fontWeight: FontWeight.w400,
-                                                                color: Colors.white.withOpacity(0.25),
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),// Quantity Controls (Trailing-ish)
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                         _buildCartStepper(context, cartProvider, item),
                                       ],
                                     ),
@@ -290,122 +349,200 @@ class CartDetailsScreen extends StatelessWidget {
         left: false,
         right: false,
         child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.03),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
+            color: Theme.of(context).scaffoldBackgroundColor,
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Start New Order?'),
-                        content: const Text(
-                          'This will archive the current order and create a fresh one based on current stock levels.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('Cancel'),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Start New Order?'),
+                          content: const Text(
+                            'This will archive the current order and create a fresh one based on current stock levels.',
                           ),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.pop(ctx);
-                              cartProvider.createNewCart();
-                              Navigator.pop(context);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white.withOpacity(0.05),
-                              foregroundColor: Colors.white,
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Cancel'),
                             ),
-                            child: const Text('Start New'),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                cartProvider.createNewCart();
+                                Navigator.pop(context);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white.withOpacity(0.05),
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Text('Start New'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.archive_outlined,
+                              size: 18, color: Colors.white.withOpacity(0.7)),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'ARCHIVE',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.0,
+                            ),
                           ),
                         ],
                       ),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.archive_outlined, size: 18, color: Colors.white.withOpacity(0.7)),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'ARCHIVE',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                      ],
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _shareCart(context, items, getSupplierName),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Colors.orangeAccent, Colors.deepOrange],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _shareCart(
+                      context,
+                      items,
+                      getSupplierName,
+                      getCategoryName,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Colors.orangeAccent, Colors.deepOrange],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.deepOrange.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.deepOrange.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.share_outlined, size: 18, color: Colors.white),
-                        const SizedBox(width: 8),
-                        Text(
-                          'SHARE',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: 1.0,
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.share_outlined, size: 18, color: Colors.white),
+                          SizedBox(width: 8),
+                          Text(
+                            'SHARE',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 1.0,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         ),
       ),
     );
   }
 
+  // ── Group header ────────────────────────────────────────────────────────────
+  Widget _buildGroupHeader({
+    required int groupIndex,
+    required String groupKey,
+    required int itemCount,
+    required String Function(String) getSupplierName,
+    required String Function(String) getCategoryName,
+    required Color Function(String) getCategoryColor,
+  }) {
+    final isCategory = _groupBy == _GroupBy.category;
+    final label = isCategory
+        ? getCategoryName(groupKey).toUpperCase()
+        : getSupplierName(groupKey).toUpperCase();
+    final accent =
+        isCategory ? getCategoryColor(groupKey) : Colors.orange.withOpacity(0.8);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+          top: groupIndex == 0
+              ? BorderSide.none
+              : BorderSide(color: Colors.white.withOpacity(0.05)),
+        ),
+      ),
+      width: double.infinity,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              if (isCategory)
+                Container(
+                  width: 10,
+                  height: 10,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
+                ),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  color: accent,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '$itemCount ITEMS',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.white.withOpacity(0.4),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Cart stepper ────────────────────────────────────────────────────────────
   Widget _buildCartStepper(BuildContext context, CartProvider provider, CartItem item) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -414,9 +551,7 @@ class CartDetailsScreen extends StatelessWidget {
           icon: Icons.remove,
           onPressed: () {
             final newQty = item.quantityNeeded - 1;
-            if (newQty >= 0) {
-              provider.updateItemQuantity(item.listId, item.id, newQty);
-            }
+            if (newQty >= 0) provider.updateItemQuantity(item.listId, item.id, newQty);
           },
         ),
         GestureDetector(
@@ -455,7 +590,27 @@ class CartDetailsScreen extends StatelessWidget {
     );
   }
 
-  void _showEditStockDialog(BuildContext context, InventoryProvider inventory, String itemId, String itemName, String unit) {
+  Widget _buildCartStepButton({required IconData icon, required VoidCallback onPressed}) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, size: 16, color: Colors.white70),
+      ),
+    );
+  }
+
+  void _showEditStockDialog(
+    BuildContext context,
+    InventoryProvider inventory,
+    String itemId,
+    String itemName,
+    String unit,
+  ) {
     final currentStock = _getCurrentStock(inventory, itemId);
     final controller = TextEditingController(text: _formatQty(currentStock));
     controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
@@ -484,13 +639,16 @@ class CartDetailsScreen extends StatelessWidget {
               controller: controller,
               autofocus: true,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+              style: const TextStyle(
+                  fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blueAccent),
               textAlign: TextAlign.center,
               decoration: InputDecoration(
                 suffixText: unit,
                 suffixStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-                focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent, width: 2)),
+                enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+                focusedBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.blueAccent, width: 2)),
               ),
             ),
           ],
@@ -514,20 +672,12 @@ class CartDetailsScreen extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-            child: const Text('UPDATE STOCK', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+            child: const Text('UPDATE STOCK',
+                style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)),
           ),
         ],
       ),
     );
-  }
-
-  double _getCurrentStock(InventoryProvider inventory, String itemId) {
-    try {
-      final item = inventory.items.firstWhere((i) => i.id == itemId);
-      return item.currentQuantity;
-    } catch (e) {
-      return 0;
-    }
   }
 
   void _showEditQuantityDialog(BuildContext context, CartProvider provider, CartItem item) {
@@ -575,13 +725,16 @@ class CartDetailsScreen extends StatelessWidget {
               controller: controller,
               autofocus: true,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.orange),
+              style: const TextStyle(
+                  fontSize: 24, fontWeight: FontWeight.bold, color: Colors.orange),
               textAlign: TextAlign.center,
               decoration: InputDecoration(
                 suffixText: item.unit,
                 suffixStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-                focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.orange, width: 2)),
+                enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+                focusedBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.orange, width: 2)),
               ),
             ),
           ],
@@ -589,7 +742,9 @@ class CartDetailsScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('CANCEL', style: TextStyle(color: Colors.white.withOpacity(0.5), fontWeight: FontWeight.bold)),
+            child: Text('CANCEL',
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.5), fontWeight: FontWeight.bold)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -605,99 +760,103 @@ class CartDetailsScreen extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-            child: const Text('SAVE', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+            child: const Text('SAVE',
+                style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCartStepButton({required IconData icon, required VoidCallback onPressed}) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, size: 16, color: Colors.white70),
-      ),
-    );
+  double _getCurrentStock(InventoryProvider inventory, String itemId) {
+    try {
+      return inventory.items.firstWhere((i) => i.id == itemId).currentQuantity;
+    } catch (_) {
+      return 0;
+    }
   }
 
+  // ── Share ───────────────────────────────────────────────────────────────────
   void _shareCart(
     BuildContext context,
     List<CartItem> items,
     String Function(String) getSupplierName,
+    String Function(String) getCategoryName,
   ) {
     if (items.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Cart is empty')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Cart is empty')));
       return;
     }
 
-    // Group items by supplier
+    final inventoryProvider = Provider.of<InventoryProvider>(context, listen: false);
     final Map<String, List<CartItem>> groupedItems = {};
-    for (var item in items) {
-      final supplierId = item.supplierId ?? 'unknown';
-      if (!groupedItems.containsKey(supplierId)) {
-        groupedItems[supplierId] = [];
+
+    if (_groupBy == _GroupBy.supplier) {
+      for (var item in items) {
+        groupedItems.putIfAbsent(item.supplierId ?? 'unknown', () => []).add(item);
       }
-      groupedItems[supplierId]!.add(item);
+    } else {
+      for (var cartItem in items) {
+        String key = 'uncategorized';
+        try {
+          final gi = inventoryProvider.items.firstWhere((i) => i.id == cartItem.itemId);
+          if (gi.categoryIds.isNotEmpty) key = gi.categoryIds.first;
+        } catch (_) {}
+        groupedItems.putIfAbsent(key, () => []).add(cartItem);
+      }
     }
 
-    // Sort suppliers
     final sortedKeys = groupedItems.keys.toList()
       ..sort((a, b) {
-        if (a == 'unknown') return 1;
-        if (b == 'unknown') return -1;
-        return getSupplierName(a).compareTo(getSupplierName(b));
+        const fallbacks = {'unknown', 'uncategorized'};
+        if (fallbacks.contains(a)) return 1;
+        if (fallbacks.contains(b)) return -1;
+        final nameA =
+            _groupBy == _GroupBy.supplier ? getSupplierName(a) : getCategoryName(a);
+        final nameB =
+            _groupBy == _GroupBy.supplier ? getSupplierName(b) : getCategoryName(b);
+        return nameA.compareTo(nameB);
       });
 
-    // Build share text
-    final buffer = StringBuffer();
-    buffer.writeln('🛒 Shopping List');
-    buffer.writeln(DateFormat('MMM dd, yyyy').format(DateTime.now()));
-    buffer.writeln();
+    final modeLabel = _groupBy == _GroupBy.supplier ? 'By Supplier' : 'By Category';
+    final buffer = StringBuffer()
+      ..writeln('🛒 Shopping List ($modeLabel)')
+      ..writeln(DateFormat('MMM dd, yyyy').format(DateTime.now()))
+      ..writeln();
 
     int totalItems = 0;
-    for (var supplierId in sortedKeys) {
-      final supplierItems = groupedItems[supplierId]!;
-      buffer.writeln('📦 ${getSupplierName(supplierId)} -');
-
-      for (var item in supplierItems) {
+    for (var key in sortedKeys) {
+      final groupItems = groupedItems[key]!;
+      final groupName =
+          _groupBy == _GroupBy.supplier ? getSupplierName(key) : getCategoryName(key);
+      buffer.writeln('📦 $groupName -');
+      for (var item in groupItems) {
         final status = item.state == CartItemState.bought
             ? '✅'
             : item.state == CartItemState.skipped
-            ? '⏭️'
-            : item.state == CartItemState.unavailable
-            ? '❌'
-            : '🔹';
-
+                ? '⏭️'
+                : item.state == CartItemState.unavailable
+                    ? '❌'
+                    : '🔹';
         buffer.writeln(
-          '  $status ${item.name} - ${_formatQty(item.quantityNeeded)} ${item.unit}',
-        );
+            '  $status ${item.name} - ${_formatQty(item.quantityNeeded)} ${item.unit}');
         totalItems++;
       }
       buffer.writeln();
     }
-
-    buffer.writeln('━━━━━━');
-    buffer.writeln('Total Items: $totalItems');
+    buffer
+      ..writeln('━━━━━━')
+      ..writeln('Total Items: $totalItems');
 
     final shareText = buffer.toString();
 
-    // Try to share, fallback to clipboard
     try {
       Share.share(
         shareText,
-        subject:
-            'Shopping List - ${DateFormat('MMM dd').format(DateTime.now())}',
+        subject: 'Shopping List - ${DateFormat('MMM dd').format(DateTime.now())}',
       );
-    } catch (e) {
-      // Fallback: Copy to clipboard (works better on web)
+    } catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('📋 Shopping list copied to clipboard!'),
@@ -705,19 +864,13 @@ class CartDetailsScreen extends StatelessWidget {
           duration: const Duration(seconds: 3),
         ),
       );
-
-      // Note: For web, you'd need to manually copy since Clipboard API
-      // requires user permission. For now, just show the text in a dialog
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('Shopping List'),
           content: SingleChildScrollView(child: SelectableText(shareText)),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Close'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
           ],
         ),
       );

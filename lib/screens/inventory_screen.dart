@@ -25,7 +25,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   void _editRestaurantName(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final currentName = auth.user?.displayName ?? 'RamenOps';
+    final currentName = auth.user?.displayName ?? 'StockSmart';
     final controller = TextEditingController(text: currentName);
 
     showDialog(
@@ -191,7 +191,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   },
                 )
               : Text(
-                  auth.user?.displayName ?? 'RamenOps',
+                  auth.user?.displayName ?? 'StockSmart',
                   overflow: TextOverflow.ellipsis,
                 ),
           leading: _isSearching
@@ -270,7 +270,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            auth.user?.displayName ?? 'RamenOps',
+                            auth.user?.displayName ?? 'StockSmart',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 20,

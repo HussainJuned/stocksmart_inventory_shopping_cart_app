@@ -1,10 +1,10 @@
-# PROJECT_CONTEXT: RamenOps
+# PROJECT_CONTEXT: StockSmart
 
 > **Master Context Document**
 > *Last Updated: 2025-12-21*
 
 ## 1. Project Vision
-**RamenOps** is a streamlined inventory management and ordering application designed specifically for high-pace Ramen shops.
+**StockSmart** is a streamlined inventory management and ordering application designed specifically for high-pace Ramen shops.
 *   **Problem**: Manual stock taking is slow, error-prone, and disconnected from ordering.
 *   **Solution**: A fast, offline-first mobile app that allows rapid inventory counting, visualizes shortages against "Par Levels", and generates shopping lists automatically.
 
