@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/shopping_list_model.dart';
+import '../providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../widgets/cart_search_modal.dart';
@@ -214,7 +215,8 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                       final index = entry.key;
                       final item = entry.value;
                       final subKey = _getSubKey(item, inventoryProvider);
-                      final isFirstInSubGroup = index == 0 ||
+                      final isFirstInSubGroup =
+                          index == 0 ||
                           _getSubKey(
                                 groupItems[index - 1],
                                 inventoryProvider,
@@ -426,7 +428,6 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                                   ),
                                                 ),
                                               ),
-
                                             ],
                                           ),
                                         ),
@@ -674,8 +675,9 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
   String _getSubKey(CartItem item, InventoryProvider inventoryProvider) {
     if (_groupBy == _GroupBy.supplier) {
       try {
-        final gi =
-            inventoryProvider.items.firstWhere((i) => i.id == item.itemId);
+        final gi = inventoryProvider.items.firstWhere(
+          (i) => i.id == item.itemId,
+        );
         return gi.categoryIds.isNotEmpty
             ? gi.categoryIds.first
             : 'uncategorized';
@@ -695,10 +697,12 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
     Color Function(String) getCategoryColor,
   ) {
     final isCategory = _groupBy == _GroupBy.supplier;
-    final label =
-        isCategory ? getCategoryName(subKey) : getSupplierName(subKey);
-    final color =
-        isCategory ? getCategoryColor(subKey) : Colors.white.withOpacity(0.35);
+    final label = isCategory
+        ? getCategoryName(subKey)
+        : getSupplierName(subKey);
+    final color = isCategory
+        ? getCategoryColor(subKey)
+        : Colors.white.withOpacity(0.35);
 
     return Padding(
       padding: const EdgeInsets.only(left: 20, right: 16, top: 10, bottom: 2),
@@ -1089,22 +1093,71 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
         return nameA.compareTo(nameB);
       });
 
+    // ── Header ─────────────────────────────────────────────────────────────
+    final restaurantName =
+        Provider.of<AuthProvider>(context, listen: false).user?.displayName ??
+        'Order List';
+    final now = DateTime.now();
+    final dateStr = DateFormat('EEE, dd MMM · HH:mm').format(now);
     final modeLabel = _groupBy == _GroupBy.supplier
         ? 'By Supplier'
         : 'By Category';
-    final buffer = StringBuffer()
-      ..writeln('🛒 Shopping List ($modeLabel)')
-      ..writeln(DateFormat('MMM dd, yyyy').format(DateTime.now()))
+
+    // ── Stats ──────────────────────────────────────────────────────────────
+    final boughtCount = items
+        .where((i) => i.state == CartItemState.bought)
+        .length;
+    final pendingCount = items
+        .where((i) => i.state == CartItemState.pending)
+        .length;
+    final skippedCount = items
+        .where((i) => i.state == CartItemState.skipped)
+        .length;
+    final unavailableCount = items
+        .where((i) => i.state == CartItemState.unavailable)
+        .length;
+
+    // ── Build text ─────────────────────────────────────────────────────────
+    final buffer = StringBuffer();
+
+    buffer
+      ..writeln('🍜 $restaurantName · Order List')
+      ..writeln('📅 $dateStr')
+      ..writeln('───────────────────')
       ..writeln();
 
-    int totalItems = 0;
+    // Progress summary
+    final summaryParts = <String>[
+      if (pendingCount > 0) '🔹 $pendingCount pending',
+      if (boughtCount > 0) '✅ $boughtCount bought',
+      if (unavailableCount > 0) '❌ $unavailableCount unavailable',
+      if (skippedCount > 0) '⏭️ $skippedCount skipped',
+    ];
+    buffer
+      ..writeln(summaryParts.join('  ·  '))
+      ..writeln()
+      ..writeln('── $modeLabel ──────────────────')
+      ..writeln();
+
+    // Groups with sub-groups, stock context and notes
     for (var key in sortedKeys) {
       final groupItems = groupedItems[key]!;
       final groupName = _groupBy == _GroupBy.supplier
           ? getSupplierName(key)
           : getCategoryName(key);
-      buffer.writeln('📦 $groupName -');
+      buffer.writeln('📦 $groupName');
+
+      String? lastSubKey;
       for (var item in groupItems) {
+        final subKey = _getSubKey(item, inventoryProvider);
+        if (subKey != lastSubKey) {
+          lastSubKey = subKey;
+          final subLabel = _groupBy == _GroupBy.supplier
+              ? getCategoryName(subKey)
+              : getSupplierName(subKey);
+          buffer.writeln('  ▸ $subLabel');
+        }
+
         final status = item.state == CartItemState.bought
             ? '✅'
             : item.state == CartItemState.skipped
@@ -1112,16 +1165,37 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
             : item.state == CartItemState.unavailable
             ? '❌'
             : '🔹';
+
+        // Stock context from inventory
+        String stockInfo = '';
+        try {
+          final gi = inventoryProvider.items.firstWhere(
+            (i) => i.id == item.itemId,
+          );
+          stockInfo =
+              '  [stock: ${_formatQty(gi.currentQuantity)} ${item.unit}]';
+        } catch (_) {}
+
         buffer.writeln(
-          '  $status ${item.name} - ${_formatQty(item.quantityNeeded)} ${item.unit}',
+          '    $status ${item.name}  ×${_formatQty(item.quantityNeeded)} ${item.unit}$stockInfo',
         );
-        totalItems++;
+
+        // Per-item note
+        if (item.note != null && item.note!.isNotEmpty) {
+          buffer.writeln('       📝 ${item.note}');
+        }
       }
       buffer.writeln();
     }
+
     buffer
-      ..writeln('━━━━━━')
-      ..writeln('Total Items: $totalItems');
+      ..writeln('───────────────────')
+      ..write('Total: ${items.length} items')
+      ..write('  ·  Pending: $pendingCount')
+      ..write('  ·  Done: $boughtCount');
+    if (unavailableCount > 0)
+      buffer.write('  ·  Unavailable: $unavailableCount');
+    buffer.writeln();
 
     final shareText = buffer.toString();
 
@@ -1129,7 +1203,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
       Share.share(
         shareText,
         subject:
-            'Shopping List - ${DateFormat('MMM dd').format(DateTime.now())}',
+            '$restaurantName – Order List ${DateFormat('dd MMM').format(now)}',
       );
     } catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
