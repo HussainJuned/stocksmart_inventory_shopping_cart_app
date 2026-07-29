@@ -98,7 +98,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
                           setState(() => isImporting = true);
                           try {
-                            final provider = Provider.of<InventoryProvider>(context, listen: false);
+                            final provider = Provider.of<InventoryProvider>(
+                              context,
+                              listen: false,
+                            );
                             await provider.importFromJson(jsonString);
                             if (context.mounted) {
                               Navigator.pop(context);
@@ -113,7 +116,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Invalid JSON or import failed: $e'),
+                                  content: Text(
+                                    'Invalid JSON or import failed: $e',
+                                  ),
                                   backgroundColor: Colors.red,
                                 ),
                               );
@@ -257,14 +262,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DrawerHeader(
-                decoration: const BoxDecoration(
-                  color: Colors.deepOrange,
-                ),
+                decoration: const BoxDecoration(color: Colors.deepOrange),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    const Icon(Icons.ramen_dining, size: 48, color: Colors.white),
+                    const Icon(
+                      Icons.ramen_dining,
+                      size: 48,
+                      color: Colors.white,
+                    ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -342,25 +349,46 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       children: [
                         if (auth.user?.email != null)
                           ListTile(
-                            contentPadding: const EdgeInsets.only(left: 32, right: 16),
-                            leading: const Icon(Icons.email_outlined, size: 20, color: Colors.grey),
+                            contentPadding: const EdgeInsets.only(
+                              left: 32,
+                              right: 16,
+                            ),
+                            leading: const Icon(
+                              Icons.email_outlined,
+                              size: 20,
+                              color: Colors.grey,
+                            ),
                             title: Text(
                               auth.user!.email!,
-                              style: const TextStyle(fontSize: 13, color: Colors.grey),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                             dense: true,
                           ),
                         Consumer<SettingsProvider>(
                           builder: (context, settings, _) => SwitchListTile(
-                            contentPadding: const EdgeInsets.only(left: 32, right: 16),
-                            secondary: const Icon(Icons.touch_app_outlined, size: 20),
-                            title: const Text('Ask quantity when adding to cart', style: TextStyle(fontSize: 14)),
+                            contentPadding: const EdgeInsets.only(
+                              left: 32,
+                              right: 16,
+                            ),
+                            secondary: const Icon(
+                              Icons.touch_app_outlined,
+                              size: 20,
+                            ),
+                            title: const Text(
+                              'Ask quantity when adding to cart',
+                              style: TextStyle(fontSize: 14),
+                            ),
                             value: settings.showQuantityPopup,
                             onChanged: settings.setShowQuantityPopup,
                             dense: true,
                             activeThumbColor: Colors.deepOrange,
-                            activeTrackColor: Colors.deepOrange.withValues(alpha: 0.4),
+                            activeTrackColor: Colors.deepOrange.withValues(
+                              alpha: 0.4,
+                            ),
                           ),
                         ),
                         ListTile(
@@ -389,7 +417,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.redAccent),
-                title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
+                title: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.redAccent),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   Provider.of<AuthProvider>(context, listen: false).signOut();
@@ -420,7 +451,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 }
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Colors.orangeAccent, Colors.deepOrange],
@@ -440,7 +474,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.shopping_cart, color: Colors.white, size: 20),
+                    const Icon(
+                      Icons.shopping_cart,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                     const SizedBox(width: 10),
                     Text(
                       'View Cart',
@@ -453,7 +491,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),

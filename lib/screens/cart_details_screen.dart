@@ -79,7 +79,9 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
       for (var cartItem in items) {
         String key = 'uncategorized';
         try {
-          final gi = inventoryProvider.items.firstWhere((i) => i.id == cartItem.itemId);
+          final gi = inventoryProvider.items.firstWhere(
+            (i) => i.id == cartItem.itemId,
+          );
           if (gi.categoryIds.isNotEmpty) key = gi.categoryIds.first;
         } catch (_) {}
         groupedItems.putIfAbsent(key, () => []).add(cartItem);
@@ -89,15 +91,58 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
           if (a == 'uncategorized') return 1;
           if (b == 'uncategorized') return -1;
           try {
-            final orderA =
-                inventoryProvider.categories.firstWhere((c) => c.id == a).sortOrder;
-            final orderB =
-                inventoryProvider.categories.firstWhere((c) => c.id == b).sortOrder;
+            final orderA = inventoryProvider.categories
+                .firstWhere((c) => c.id == a)
+                .sortOrder;
+            final orderB = inventoryProvider.categories
+                .firstWhere((c) => c.id == b)
+                .sortOrder;
             return orderA.compareTo(orderB);
           } catch (_) {
             return 0;
           }
         });
+    }
+
+    // ── Secondary sort within each group ────────────────────────────────────
+    // Grouped by supplier → order items within each group by category sortOrder
+    // Grouped by category → order items within each group by supplier name
+    int _getCategorySortOrder(CartItem cartItem) {
+      try {
+        final gi = inventoryProvider.items.firstWhere(
+          (i) => i.id == cartItem.itemId,
+        );
+        if (gi.categoryIds.isEmpty) return 9999;
+        return inventoryProvider.categories
+            .firstWhere((c) => c.id == gi.categoryIds.first)
+            .sortOrder;
+      } catch (_) {
+        return 9999;
+      }
+    }
+
+    String _getItemSupplierName(CartItem cartItem) {
+      return getSupplierName(cartItem.supplierId ?? 'unknown');
+    }
+
+    for (final groupItems in groupedItems.values) {
+      if (_groupBy == _GroupBy.supplier) {
+        groupItems.sort((a, b) {
+          final orderA = _getCategorySortOrder(a);
+          final orderB = _getCategorySortOrder(b);
+          final cmp = orderA.compareTo(orderB);
+          if (cmp != 0) return cmp;
+          return a.name.compareTo(b.name);
+        });
+      } else {
+        groupItems.sort((a, b) {
+          final cmp = _getItemSupplierName(
+            a,
+          ).compareTo(_getItemSupplierName(b));
+          if (cmp != 0) return cmp;
+          return a.name.compareTo(b.name);
+        });
+      }
     }
 
     return Scaffold(
@@ -169,10 +214,14 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                     ...groupItems.map((item) {
                       final isBought = item.state == CartItemState.bought;
                       final isSkipped = item.state == CartItemState.skipped;
-                      final isUnavailable = item.state == CartItemState.unavailable;
+                      final isUnavailable =
+                          item.state == CartItemState.unavailable;
 
                       return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
                         child: Dismissible(
                           key: Key(item.id),
                           direction: DismissDirection.endToStart,
@@ -183,10 +232,16 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                               color: Colors.redAccent.withOpacity(0.8),
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Icon(Icons.delete_outline, color: Colors.white),
+                            child: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.white,
+                            ),
                           ),
                           onDismissed: (_) {
-                            cartProvider.removeItemFromCart(widget.listId, item.id);
+                            cartProvider.removeItemFromCart(
+                              widget.listId,
+                              item.id,
+                            );
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Removed ${item.name}')),
                             );
@@ -199,8 +254,8 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                 color: isBought
                                     ? Colors.green.withOpacity(0.3)
                                     : isUnavailable
-                                        ? Colors.red.withOpacity(0.3)
-                                        : Colors.white.withOpacity(0.05),
+                                    ? Colors.red.withOpacity(0.3)
+                                    : Colors.white.withOpacity(0.05),
                                 width: 1.5,
                               ),
                               boxShadow: [
@@ -235,31 +290,43 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                                 ? CartItemState.pending
                                                 : CartItemState.bought;
                                             cartProvider.updateItemState(
-                                                widget.listId, item.id, newState);
+                                              widget.listId,
+                                              item.id,
+                                              newState,
+                                            );
                                           },
                                           child: Container(
                                             padding: const EdgeInsets.all(4),
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
                                               border: Border.all(
-                                                color: isBought ? Colors.green : Colors.white24,
+                                                color: isBought
+                                                    ? Colors.green
+                                                    : Colors.white24,
                                                 width: 2,
                                               ),
                                               color: isBought
-                                                  ? Colors.green.withOpacity(0.1)
+                                                  ? Colors.green.withOpacity(
+                                                      0.1,
+                                                    )
                                                   : Colors.transparent,
                                             ),
                                             child: Icon(
-                                              isBought ? Icons.check : Icons.circle_outlined,
+                                              isBought
+                                                  ? Icons.check
+                                                  : Icons.circle_outlined,
                                               size: 20,
-                                              color: isBought ? Colors.green : Colors.white24,
+                                              color: isBought
+                                                  ? Colors.green
+                                                  : Colors.white24,
                                             ),
                                           ),
                                         ),
                                         const SizedBox(width: 16),
                                         Expanded(
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 item.name,
@@ -269,54 +336,80 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                                   color: isBought || isSkipped
                                                       ? Colors.white38
                                                       : Colors.white,
-                                                  decoration: (isBought || isSkipped)
-                                                      ? TextDecoration.lineThrough
+                                                  decoration:
+                                                      (isBought || isSkipped)
+                                                      ? TextDecoration
+                                                            .lineThrough
                                                       : null,
                                                 ),
                                               ),
                                               const SizedBox(height: 6),
                                               GestureDetector(
-                                                onTap: () => _showEditStockDialog(
-                                                  context,
-                                                  inventoryProvider,
-                                                  item.itemId,
-                                                  item.name,
-                                                  item.unit,
-                                                ),
+                                                onTap: () =>
+                                                    _showEditStockDialog(
+                                                      context,
+                                                      inventoryProvider,
+                                                      item.itemId,
+                                                      item.name,
+                                                      item.unit,
+                                                    ),
                                                 child: Container(
-                                                  padding: const EdgeInsets.symmetric(
-                                                      horizontal: 8, vertical: 2),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 2,
+                                                      ),
                                                   decoration: BoxDecoration(
-                                                    color: Colors.white.withOpacity(0.05),
-                                                    borderRadius: BorderRadius.circular(6),
+                                                    color: Colors.white
+                                                        .withOpacity(0.05),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          6,
+                                                        ),
                                                     border: Border.all(
-                                                        color: Colors.white.withOpacity(0.1)),
+                                                      color: Colors.white
+                                                          .withOpacity(0.1),
+                                                    ),
                                                   ),
                                                   child: Row(
-                                                    mainAxisSize: MainAxisSize.min,
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
                                                     children: [
                                                       Column(
                                                         crossAxisAlignment:
-                                                            CrossAxisAlignment.start,
-                                                        mainAxisSize: MainAxisSize.min,
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
                                                         children: [
                                                           Text(
                                                             'Stock: ${_formatQty(_getCurrentStock(inventoryProvider, item.itemId))}',
                                                             style: TextStyle(
                                                               fontSize: 10,
-                                                              fontWeight: FontWeight.w600,
-                                                              color:
-                                                                  Colors.white.withOpacity(0.4),
-                                                              letterSpacing: 0.2,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              color: Colors
+                                                                  .white
+                                                                  .withOpacity(
+                                                                    0.4,
+                                                                  ),
+                                                              letterSpacing:
+                                                                  0.2,
                                                             ),
                                                           ),
                                                           Text(
                                                             item.unit,
                                                             style: TextStyle(
                                                               fontSize: 8,
-                                                              fontWeight: FontWeight.w400,
-                                                              color:
-                                                                  Colors.white.withOpacity(0.25),
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w400,
+                                                              color: Colors
+                                                                  .white
+                                                                  .withOpacity(
+                                                                    0.25,
+                                                                  ),
                                                             ),
                                                           ),
                                                         ],
@@ -328,7 +421,11 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                             ],
                                           ),
                                         ),
-                                        _buildCartStepper(context, cartProvider, item),
+                                        _buildCartStepper(
+                                          context,
+                                          cartProvider,
+                                          item,
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -402,8 +499,11 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.archive_outlined,
-                              size: 18, color: Colors.white.withOpacity(0.7)),
+                          Icon(
+                            Icons.archive_outlined,
+                            size: 18,
+                            color: Colors.white.withOpacity(0.7),
+                          ),
                           const SizedBox(width: 8),
                           const Text(
                             'ARCHIVE',
@@ -447,7 +547,11 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.share_outlined, size: 18, color: Colors.white),
+                          Icon(
+                            Icons.share_outlined,
+                            size: 18,
+                            color: Colors.white,
+                          ),
                           SizedBox(width: 8),
                           Text(
                             'SHARE',
@@ -484,8 +588,9 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
     final label = isCategory
         ? getCategoryName(groupKey).toUpperCase()
         : getSupplierName(groupKey).toUpperCase();
-    final accent =
-        isCategory ? getCategoryColor(groupKey) : Colors.orange.withOpacity(0.8);
+    final accent = isCategory
+        ? getCategoryColor(groupKey)
+        : Colors.orange.withOpacity(0.8);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -509,7 +614,10 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                   width: 10,
                   height: 10,
                   margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: accent,
+                    shape: BoxShape.circle,
+                  ),
                 ),
               Text(
                 label,
@@ -543,7 +651,11 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
   }
 
   // ── Cart stepper ────────────────────────────────────────────────────────────
-  Widget _buildCartStepper(BuildContext context, CartProvider provider, CartItem item) {
+  Widget _buildCartStepper(
+    BuildContext context,
+    CartProvider provider,
+    CartItem item,
+  ) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -551,7 +663,8 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
           icon: Icons.remove,
           onPressed: () {
             final newQty = item.quantityNeeded - 1;
-            if (newQty >= 0) provider.updateItemQuantity(item.listId, item.id, newQty);
+            if (newQty >= 0)
+              provider.updateItemQuantity(item.listId, item.id, newQty);
           },
         ),
         GestureDetector(
@@ -574,7 +687,11 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
         _buildCartStepButton(
           icon: Icons.add,
           onPressed: () {
-            provider.updateItemQuantity(item.listId, item.id, item.quantityNeeded + 1);
+            provider.updateItemQuantity(
+              item.listId,
+              item.id,
+              item.quantityNeeded + 1,
+            );
           },
         ),
         const SizedBox(width: 4),
@@ -590,7 +707,10 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
     );
   }
 
-  Widget _buildCartStepButton({required IconData icon, required VoidCallback onPressed}) {
+  Widget _buildCartStepButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
@@ -613,7 +733,10 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
   ) {
     final currentStock = _getCurrentStock(inventory, itemId);
     final controller = TextEditingController(text: _formatQty(currentStock));
-    controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
+    controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: controller.text.length,
+    );
 
     showDialog(
       context: context,
@@ -638,17 +761,27 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
             TextField(
               controller: controller,
               autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               style: const TextStyle(
-                  fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.blueAccent,
+              ),
               textAlign: TextAlign.center,
               decoration: InputDecoration(
                 suffixText: unit,
-                suffixStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
+                suffixStyle: TextStyle(
+                  color: Colors.white.withOpacity(0.3),
+                  fontSize: 14,
+                ),
                 enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+                  borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                ),
                 focusedBorder: const UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.blueAccent, width: 2)),
+                  borderSide: BorderSide(color: Colors.blueAccent, width: 2),
+                ),
               ),
             ),
           ],
@@ -656,7 +789,10 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('CANCEL', style: TextStyle(color: Colors.white.withOpacity(0.5))),
+            child: Text(
+              'CANCEL',
+              style: TextStyle(color: Colors.white.withOpacity(0.5)),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -669,20 +805,33 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blueAccent,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-            child: const Text('UPDATE STOCK',
-                style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+            child: const Text(
+              'UPDATE STOCK',
+              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5),
+            ),
           ),
         ],
       ),
     );
   }
 
-  void _showEditQuantityDialog(BuildContext context, CartProvider provider, CartItem item) {
-    final controller = TextEditingController(text: _formatQty(item.quantityNeeded));
-    controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
+  void _showEditQuantityDialog(
+    BuildContext context,
+    CartProvider provider,
+    CartItem item,
+  ) {
+    final controller = TextEditingController(
+      text: _formatQty(item.quantityNeeded),
+    );
+    controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: controller.text.length,
+    );
 
     showDialog(
       context: context,
@@ -697,11 +846,18 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
             Expanded(
               child: Text(
                 'Edit Quantity: ${item.name}',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+              icon: const Icon(
+                Icons.delete_outline,
+                color: Colors.redAccent,
+                size: 20,
+              ),
               onPressed: () {
                 provider.removeItemFromCart(item.listId, item.id);
                 Navigator.pop(ctx);
@@ -710,7 +866,9 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                     content: Text('${item.name} removed from cart'),
                     backgroundColor: Colors.redAccent.withOpacity(0.9),
                     behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 );
               },
@@ -724,17 +882,27 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
             TextField(
               controller: controller,
               autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               style: const TextStyle(
-                  fontSize: 24, fontWeight: FontWeight.bold, color: Colors.orange),
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.orange,
+              ),
               textAlign: TextAlign.center,
               decoration: InputDecoration(
                 suffixText: item.unit,
-                suffixStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
+                suffixStyle: TextStyle(
+                  color: Colors.white.withOpacity(0.3),
+                  fontSize: 14,
+                ),
                 enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+                  borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                ),
                 focusedBorder: const UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.orange, width: 2)),
+                  borderSide: BorderSide(color: Colors.orange, width: 2),
+                ),
               ),
             ),
           ],
@@ -742,9 +910,13 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('CANCEL',
-                style: TextStyle(
-                    color: Colors.white.withOpacity(0.5), fontWeight: FontWeight.bold)),
+            child: Text(
+              'CANCEL',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -757,11 +929,15 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange,
               foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-            child: const Text('SAVE',
-                style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+            child: const Text(
+              'SAVE',
+              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+            ),
           ),
         ],
       ),
@@ -784,23 +960,31 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
     String Function(String) getCategoryName,
   ) {
     if (items.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Cart is empty')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Cart is empty')));
       return;
     }
 
-    final inventoryProvider = Provider.of<InventoryProvider>(context, listen: false);
+    final inventoryProvider = Provider.of<InventoryProvider>(
+      context,
+      listen: false,
+    );
     final Map<String, List<CartItem>> groupedItems = {};
 
     if (_groupBy == _GroupBy.supplier) {
       for (var item in items) {
-        groupedItems.putIfAbsent(item.supplierId ?? 'unknown', () => []).add(item);
+        groupedItems
+            .putIfAbsent(item.supplierId ?? 'unknown', () => [])
+            .add(item);
       }
     } else {
       for (var cartItem in items) {
         String key = 'uncategorized';
         try {
-          final gi = inventoryProvider.items.firstWhere((i) => i.id == cartItem.itemId);
+          final gi = inventoryProvider.items.firstWhere(
+            (i) => i.id == cartItem.itemId,
+          );
           if (gi.categoryIds.isNotEmpty) key = gi.categoryIds.first;
         } catch (_) {}
         groupedItems.putIfAbsent(key, () => []).add(cartItem);
@@ -812,14 +996,18 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
         const fallbacks = {'unknown', 'uncategorized'};
         if (fallbacks.contains(a)) return 1;
         if (fallbacks.contains(b)) return -1;
-        final nameA =
-            _groupBy == _GroupBy.supplier ? getSupplierName(a) : getCategoryName(a);
-        final nameB =
-            _groupBy == _GroupBy.supplier ? getSupplierName(b) : getCategoryName(b);
+        final nameA = _groupBy == _GroupBy.supplier
+            ? getSupplierName(a)
+            : getCategoryName(a);
+        final nameB = _groupBy == _GroupBy.supplier
+            ? getSupplierName(b)
+            : getCategoryName(b);
         return nameA.compareTo(nameB);
       });
 
-    final modeLabel = _groupBy == _GroupBy.supplier ? 'By Supplier' : 'By Category';
+    final modeLabel = _groupBy == _GroupBy.supplier
+        ? 'By Supplier'
+        : 'By Category';
     final buffer = StringBuffer()
       ..writeln('🛒 Shopping List ($modeLabel)')
       ..writeln(DateFormat('MMM dd, yyyy').format(DateTime.now()))
@@ -828,19 +1016,21 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
     int totalItems = 0;
     for (var key in sortedKeys) {
       final groupItems = groupedItems[key]!;
-      final groupName =
-          _groupBy == _GroupBy.supplier ? getSupplierName(key) : getCategoryName(key);
+      final groupName = _groupBy == _GroupBy.supplier
+          ? getSupplierName(key)
+          : getCategoryName(key);
       buffer.writeln('📦 $groupName -');
       for (var item in groupItems) {
         final status = item.state == CartItemState.bought
             ? '✅'
             : item.state == CartItemState.skipped
-                ? '⏭️'
-                : item.state == CartItemState.unavailable
-                    ? '❌'
-                    : '🔹';
+            ? '⏭️'
+            : item.state == CartItemState.unavailable
+            ? '❌'
+            : '🔹';
         buffer.writeln(
-            '  $status ${item.name} - ${_formatQty(item.quantityNeeded)} ${item.unit}');
+          '  $status ${item.name} - ${_formatQty(item.quantityNeeded)} ${item.unit}',
+        );
         totalItems++;
       }
       buffer.writeln();
@@ -854,7 +1044,8 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
     try {
       Share.share(
         shareText,
-        subject: 'Shopping List - ${DateFormat('MMM dd').format(DateTime.now())}',
+        subject:
+            'Shopping List - ${DateFormat('MMM dd').format(DateTime.now())}',
       );
     } catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -870,7 +1061,10 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
           title: const Text('Shopping List'),
           content: SingleChildScrollView(child: SelectableText(shareText)),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
           ],
         ),
       );

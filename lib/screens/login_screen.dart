@@ -93,13 +93,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   if (!_isRegistering) ...[
-                     const SizedBox(height: 8),
-                     Text(
-                       'Welcome back to the Kitchen.',
-                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                         color: Colors.grey,
-                       ),
-                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Welcome back to the Kitchen.',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                    ),
                   ],
                   const SizedBox(height: 32),
                   if (_errorMessage != null)
@@ -112,7 +112,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                          const Icon(
+                            Icons.error_outline,
+                            color: Colors.red,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -148,9 +152,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: InputDecoration(
                       labelText: 'Password',
                       prefixIcon: const Icon(Icons.lock_outline),
-                      helperText: _isRegistering 
-                        ? 'Must be at least 6 characters long' 
-                        : null,
+                      helperText: _isRegistering
+                          ? 'Must be at least 6 characters long'
+                          : null,
                       helperMaxLines: 2,
                     ),
                     obscureText: true,
@@ -170,7 +174,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       child: Text(
                         _isRegistering ? 'Create Account' : 'Login to Kitchen',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -179,16 +186,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        _isRegistering 
-                            ? 'Already have an account? ' 
+                        _isRegistering
+                            ? 'Already have an account? '
                             : 'New Restaurant? ',
                         style: const TextStyle(color: Colors.grey),
                       ),
                       TextButton(
                         onPressed: () {
                           setState(() {
-                             _isRegistering = !_isRegistering;
-                             _errorMessage = null; 
+                            _isRegistering = !_isRegistering;
+                            _errorMessage = null;
                           });
                         },
                         style: TextButton.styleFrom(
@@ -199,8 +206,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Text(
                           _isRegistering ? 'Login here' : 'Register here',
                           style: const TextStyle(
-                            color: Colors.deepOrange, 
-                            fontWeight: FontWeight.bold
+                            color: Colors.deepOrange,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
@@ -211,12 +218,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
                     onPressed: () {
-                      Provider.of<AuthProvider>(context, listen: false).loginAsGuest();
+                      Provider.of<AuthProvider>(
+                        context,
+                        listen: false,
+                      ).loginAsGuest();
                     },
                     icon: const Icon(Icons.wifi_off),
                     label: const Text('Continue as Guest (Offline Mode)'),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16,
+                        horizontal: 24,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
