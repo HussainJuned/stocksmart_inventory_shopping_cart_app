@@ -36,10 +36,11 @@ class _CartSearchModalState extends State<CartSearchModal> {
   Widget build(BuildContext context) {
     final inventoryProvider = Provider.of<InventoryProvider>(context);
     final cartProvider = Provider.of<CartProvider>(context);
+    final targetListId = cartProvider.activeCart?.id ?? widget.listId;
 
     // 1. Filter Logic
     final allItems = inventoryProvider.items.where((i) => i.isActive).toList();
-    final cartItems = cartProvider.getItemsForList(widget.listId);
+    final cartItems = cartProvider.getItemsForList(targetListId);
     final cartItemIds = cartItems.map((c) => c.itemId).toSet();
 
     // Suggestions: Low Stock

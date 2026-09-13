@@ -1,0 +1,103 @@
+{
+  "categories": [
+    { "name": "Fresh Produce", "color": "#43A047" },
+    { "name": "Dairy Chiller", "color": "#FDD835" },
+    { "name": "Bakery Shelf", "color": "#8D6E63" },
+    { "name": "Frozen Storage", "color": "#29B6F6" },
+    { "name": "Pantry Staples", "color": "#FB8C00" },
+    { "name": "Cleaning Supplies", "color": "#90A4AE" }
+  ],
+  "suppliers": [
+    { "name": "North Market Wholesale" },
+    { "name": "Sunrise Dairy Co" },
+    { "name": "Harbor Frozen Foods" },
+    { "name": "Green Basket Local" },
+    { "name": "Sparkle Trade Depot" }
+  ],
+  "items": [
+    {
+      "name": "Baby Spinach",
+      "categoryNames": ["Fresh Produce"],
+      "supplierName": "Green Basket Local",
+      "unit": "bag",
+      "parLevel": 8
+    },
+    {
+      "name": "Cherry Tomatoes",
+      "categoryNames": ["Fresh Produce"],
+      "supplierName": "North Market Wholesale",
+      "unit": "kg",
+      "parLevel": 12
+    },
+    {
+      "name": "Greek Yogurt",
+      "categoryNames": ["Dairy Chiller"],
+      "supplierName": "Sunrise Dairy Co",
+      "unit": "tub",
+      "parLevel": 10
+    },
+    {
+      "name": "Salted Butter",
+      "categoryNames": ["Dairy Chiller", "Bakery Shelf"],
+      "supplierName": "Sunrise Dairy Co",
+      "unit": "block",
+      "parLevel": 14
+    },
+    {
+      "name": "Sourdough Loaf",
+      "categoryNames": ["Bakery Shelf"],
+      "supplierName": "Green Basket Local",
+      "unit": "pcs",
+      "parLevel": 6
+    },
+    {
+      "name": "Burger Buns",
+      "categoryNames": ["Bakery Shelf", "Frozen Storage"],
+      "supplierName": "North Market Wholesale",
+      "unit": "pack",
+      "parLevel": 9
+    },
+    {
+      "name": "Frozen Peas",
+      "categoryNames": ["Frozen Storage"],
+      "supplierName": "Harbor Frozen Foods",
+      "unit": "bag",
+      "parLevel": 11
+    },
+    {
+      "name": "Breaded Fish Fillets",
+      "categoryNames": ["Frozen Storage"],
+      "supplierName": "Harbor Frozen Foods",
+      "unit": "box",
+      "parLevel": 7
+    },
+    {
+      "name": "Basmati Rice",
+      "categoryNames": ["Pantry Staples"],
+      "supplierName": "North Market Wholesale",
+      "unit": "bag",
+      "parLevel": 15
+    },
+    {
+      "name": "Crushed Tomatoes",
+      "categoryNames": ["Pantry Staples"],
+      "supplierName": "North Market Wholesale",
+      "unit": "can",
+      "parLevel": 24
+    },
+    {
+      "name": "Dish Soap",
+      "categoryNames": ["Cleaning Supplies"],
+      "supplierName": "Sparkle Trade Depot",
+      "unit": "bottle",
+      "parLevel": 5
+    },
+    {
+      "name": "Sanitizing Wipes",
+      "categoryNames": ["Cleaning Supplies"],
+      "supplierName": "Sparkle Trade Depot",
+      "unit": "pack",
+      "parLevel": 13
+    }
+  ]
+}

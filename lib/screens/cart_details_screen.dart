@@ -26,6 +26,13 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
     final inventoryProvider = Provider.of<InventoryProvider>(context);
+    ShoppingList? currentList;
+    try {
+      currentList = cartProvider.lists.firstWhere((l) => l.id == widget.listId);
+    } catch (_) {
+      currentList = null;
+    }
+    final isArchived = currentList?.status == CartStatus.archived;
 
     final items = cartProvider.getItemsForList(widget.listId);
 
@@ -196,20 +203,22 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.deepOrange,
-        foregroundColor: Colors.white,
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (ctx) => CartSearchModal(listId: widget.listId),
-          );
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Item'),
-      ),
+      floatingActionButton: isArchived
+          ? null
+          : FloatingActionButton.extended(
+              backgroundColor: Colors.deepOrange,
+              foregroundColor: Colors.white,
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (ctx) => CartSearchModal(listId: widget.listId),
+                );
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Item'),
+            ),
       body: items.isEmpty
           ? const Center(child: Text('Empty List'))
           : CustomScrollView(
@@ -252,7 +261,9 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                         ),
                         child: Dismissible(
                           key: Key(item.id),
-                          direction: DismissDirection.horizontal,
+                          direction: isArchived
+                              ? DismissDirection.none
+                              : DismissDirection.horizontal,
                           // Swipe right: toggle bought/pending
                           background: Container(
                             alignment: Alignment.centerLeft,
@@ -282,6 +293,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                             ),
                           ),
                           confirmDismiss: (direction) async {
+                            if (isArchived) return false;
                             if (direction == DismissDirection.startToEnd) {
                               HapticFeedback.mediumImpact();
                               cartProvider.updateItemState(
@@ -362,16 +374,18 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                     child: Row(
                                       children: [
                                         GestureDetector(
-                                          onTap: () {
-                                            HapticFeedback.lightImpact();
-                                            cartProvider.updateItemState(
-                                              widget.listId,
-                                              item.id,
-                                              isBought
-                                                  ? CartItemState.pending
-                                                  : CartItemState.bought,
-                                            );
-                                          },
+                                          onTap: isArchived
+                                              ? null
+                                              : () {
+                                                  HapticFeedback.lightImpact();
+                                                  cartProvider.updateItemState(
+                                                    widget.listId,
+                                                    item.id,
+                                                    isBought
+                                                        ? CartItemState.pending
+                                                        : CartItemState.bought,
+                                                  );
+                                                },
                                           child: Container(
                                             padding: const EdgeInsets.all(4),
                                             decoration: BoxDecoration(
@@ -502,6 +516,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                           context,
                                           cartProvider,
                                           item,
+                                          enabled: !isArchived,
                                         ),
                                       ],
                                     ),
@@ -536,66 +551,70 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
             ),
             child: Row(
               children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Start New Order?'),
-                          content: const Text(
-                            'This will archive the current order and create a fresh one based on current stock levels.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('Cancel'),
+                if (!isArchived) ...[
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Start New Order?'),
+                            content: const Text(
+                              'This will archive the current order and create a fresh one based on current stock levels.',
                             ),
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.pop(ctx);
-                                cartProvider.createNewCart();
-                                Navigator.pop(context);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white.withOpacity(0.05),
-                                foregroundColor: Colors.white,
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('Cancel'),
                               ),
-                              child: const Text('Start New'),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  cartProvider.createNewCart();
+                                  Navigator.pop(context);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white.withOpacity(
+                                    0.05,
+                                  ),
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text('Start New'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.archive_outlined,
+                              size: 18,
+                              color: Colors.white.withOpacity(0.7),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'ARCHIVE',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.0,
+                              ),
                             ),
                           ],
                         ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.archive_outlined,
-                            size: 18,
-                            color: Colors.white.withOpacity(0.7),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'ARCHIVE',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
+                  const SizedBox(width: 12),
+                ],
                 Expanded(
                   child: GestureDetector(
                     onTap: () => _shareCart(
@@ -806,21 +825,26 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
   Widget _buildCartStepper(
     BuildContext context,
     CartProvider provider,
-    CartItem item,
-  ) {
+    CartItem item, {
+    required bool enabled,
+  }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildCartStepButton(
           icon: Icons.remove,
+          enabled: enabled,
           onPressed: () {
             final newQty = item.quantityNeeded - 1;
-            if (newQty >= 0)
+            if (newQty >= 0) {
               provider.updateItemQuantity(item.listId, item.id, newQty);
+            }
           },
         ),
         GestureDetector(
-          onTap: () => _showEditQuantityDialog(context, provider, item),
+          onTap: enabled
+              ? () => _showEditQuantityDialog(context, provider, item)
+              : null,
           behavior: HitTestBehavior.opaque,
           child: Container(
             constraints: const BoxConstraints(minWidth: 60, minHeight: 44),
@@ -828,16 +852,17 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
             child: Text(
               _formatQty(item.quantityNeeded),
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
-                color: Colors.white,
+                color: enabled ? Colors.white : Colors.white38,
               ),
             ),
           ),
         ),
         _buildCartStepButton(
           icon: Icons.add,
+          enabled: enabled,
           onPressed: () {
             provider.updateItemQuantity(
               item.listId,
@@ -861,17 +886,22 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
 
   Widget _buildCartStepButton({
     required IconData icon,
+    required bool enabled,
     required VoidCallback onPressed,
   }) {
     return GestureDetector(
-      onTap: onPressed,
+      onTap: enabled ? onPressed : null,
       child: Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: Colors.white.withOpacity(enabled ? 0.05 : 0.02),
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, size: 16, color: Colors.white70),
+        child: Icon(
+          icon,
+          size: 16,
+          color: enabled ? Colors.white70 : Colors.white24,
+        ),
       ),
     );
   }

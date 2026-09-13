@@ -23,7 +23,9 @@ class ItemTile extends StatelessWidget {
         color: const Color(0xFF1C1C1E),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isLowStock ? Colors.redAccent.withOpacity(0.5) : Colors.white.withOpacity(0.05),
+          color: isLowStock
+              ? Colors.redAccent.withOpacity(0.5)
+              : Colors.white.withOpacity(0.05),
           width: 1,
         ),
         boxShadow: [
@@ -46,7 +48,8 @@ class ItemTile extends StatelessWidget {
           padding: const EdgeInsets.all(12.0),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
-            children: [              // 1. Name & Stock Information (Flexible Center)
+            children: [
+              // 1. Name & Stock Information (Flexible Center)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,15 +135,19 @@ class ItemTile extends StatelessWidget {
                     Consumer<CartProvider>(
                       builder: (context, cart, child) {
                         bool isInCart = false;
-                        if (cart.lists.isNotEmpty) {
-                          final activeListId = cart.lists.first.id;
+                        final activeCart = cart.activeCart;
+                        if (activeCart != null) {
+                          final activeListId = activeCart.id;
                           final items = cart.getItemsForList(activeListId);
                           isInCart = items.any((i) => i.itemId == item.id);
                         }
-                        
+
                         return GestureDetector(
                           onTap: () {
-                            final settings = Provider.of<SettingsProvider>(context, listen: false);
+                            final settings = Provider.of<SettingsProvider>(
+                              context,
+                              listen: false,
+                            );
                             if (settings.showQuantityPopup) {
                               _showAddToCartDialog(context, cart, item);
                             } else {
@@ -159,22 +166,31 @@ class ItemTile extends StatelessWidget {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               gradient: LinearGradient(
-                                colors: isInCart 
-                                  ? [Colors.greenAccent, Colors.green.shade700]
-                                  : [Colors.orangeAccent, Colors.deepOrange],
+                                colors: isInCart
+                                    ? [
+                                        Colors.greenAccent,
+                                        Colors.green.shade700,
+                                      ]
+                                    : [Colors.orangeAccent, Colors.deepOrange],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: (isInCart ? Colors.greenAccent : Colors.orangeAccent).withOpacity(0.3),
+                                  color:
+                                      (isInCart
+                                              ? Colors.greenAccent
+                                              : Colors.orangeAccent)
+                                          .withOpacity(0.3),
                                   blurRadius: 8,
                                   spreadRadius: 1,
                                 ),
                               ],
                             ),
                             child: Icon(
-                              isInCart ? Icons.check_circle : Icons.add_shopping_cart,
+                              isInCart
+                                  ? Icons.check_circle
+                                  : Icons.add_shopping_cart,
                               color: Colors.white,
                               size: 20,
                             ),
@@ -195,7 +211,8 @@ class ItemTile extends StatelessWidget {
                       ),
                   ],
                 ),
-              ),            ],
+              ),
+            ],
           ),
         ),
       ),
@@ -208,7 +225,7 @@ class ItemTile extends StatelessWidget {
     GroceryItem item,
   ) {
     final controller = TextEditingController(text: '1.0');
-    
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -231,7 +248,10 @@ class ItemTile extends StatelessWidget {
                 Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.remove_circle_outline, color: Colors.orange),
+                      icon: const Icon(
+                        Icons.remove_circle_outline,
+                        color: Colors.orange,
+                      ),
                       onPressed: () => _adjust(-1.0),
                     ),
                     Expanded(
@@ -250,7 +270,10 @@ class ItemTile extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.add_circle_outline, color: Colors.orange),
+                      icon: const Icon(
+                        Icons.add_circle_outline,
+                        color: Colors.orange,
+                      ),
                       onPressed: () => _adjust(1.0),
                     ),
                   ],
@@ -290,8 +313,6 @@ class ItemTile extends StatelessWidget {
       ),
     );
   }
-
-
 
   Widget _buildStepper(
     BuildContext context,
@@ -385,7 +406,9 @@ class _QuantityInputState extends State<_QuantityInput> {
             alignment: Alignment.center,
             child: TextField(
               controller: _controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 13,
@@ -432,13 +455,15 @@ class _QuantityInputState extends State<_QuantityInput> {
           decoration: BoxDecoration(
             color: isAdd ? Colors.orangeAccent : Colors.white.withOpacity(0.1),
             shape: BoxShape.circle,
-            boxShadow: isAdd ? [
-              BoxShadow(
-                color: Colors.orangeAccent.withOpacity(0.3),
-                blurRadius: 4,
-                spreadRadius: 1,
-              )
-            ] : null,
+            boxShadow: isAdd
+                ? [
+                    BoxShadow(
+                      color: Colors.orangeAccent.withOpacity(0.3),
+                      blurRadius: 4,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : null,
           ),
           child: Icon(
             icon,
