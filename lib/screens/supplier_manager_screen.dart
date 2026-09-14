@@ -13,16 +13,50 @@ class SupplierManagerScreen extends StatelessWidget {
     // Listen to changes
     final inventory = Provider.of<InventoryProvider>(context);
     final suppliers = inventory.suppliers;
+    final unassignedItems = inventory.items
+        .where((item) => item.defaultSupplierId == null)
+        .toList();
+    final showUnassigned = unassignedItems.isNotEmpty;
+    final rowCount = suppliers.length + (showUnassigned ? 1 : 0);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Manage Suppliers')),
       body: SafeArea(
         top: false,
-        child: suppliers.isEmpty
+        child: rowCount == 0
             ? const Center(child: Text('No suppliers added yet.'))
             : ListView.builder(
-                itemCount: suppliers.length,
+                itemCount: rowCount,
                 itemBuilder: (ctx, i) {
+                  if (showUnassigned && i == suppliers.length) {
+                    return ListTile(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ItemManagerScreen(
+                            unassignedSupplierOnly: true,
+                            title: 'Unassigned',
+                          ),
+                        ),
+                      ),
+                      leading: const CircleAvatar(
+                        backgroundColor: Colors.white10,
+                        child: Icon(
+                          Icons.local_shipping_outlined,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      title: const Text(
+                        'Unassigned',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      subtitle: Text(
+                        _buildLinkedItemsSummary(unassignedItems),
+                        style: TextStyle(color: Colors.grey[400]),
+                      ),
+                    );
+                  }
+
                   final supplier = suppliers[i];
                   final linkedItems = inventory.items
                       .where((item) => item.defaultSupplierId == supplier.id)

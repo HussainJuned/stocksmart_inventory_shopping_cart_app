@@ -12,67 +12,116 @@ class StorageTypeManagerScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final inventory = Provider.of<InventoryProvider>(context);
     final storageTypes = inventory.storageTypes;
+    final unassignedItems = inventory.items
+        .where((item) => item.storageTypeId == null)
+        .toList();
+    final showUnassigned = unassignedItems.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Manage Storage Types')),
       body: SafeArea(
         top: false,
-        child: storageTypes.isEmpty
+        child: storageTypes.isEmpty && !showUnassigned
             ? const Center(child: Text('No storage types yet.'))
-            : ReorderableListView.builder(
-                padding: const EdgeInsets.only(bottom: 80),
-                itemCount: storageTypes.length,
-                onReorder: (oldIndex, newIndex) {
-                  Provider.of<InventoryProvider>(
-                    context,
-                    listen: false,
-                  ).reorderStorageType(oldIndex, newIndex);
-                },
-                itemBuilder: (context, index) {
-                  final storageType = storageTypes[index];
-                  final linkedItems = inventory.items
-                      .where((item) => item.storageTypeId == storageType.id)
-                      .toList();
-                  return ListTile(
-                    key: ValueKey(storageType.id),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ItemManagerScreen(
-                          storageTypeId: storageType.id,
-                          title: storageType.name,
+            : SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 96),
+                child: Column(
+                  children: [
+                    if (storageTypes.isNotEmpty)
+                      ReorderableListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        buildDefaultDragHandles: false,
+                        itemCount: storageTypes.length,
+                        onReorder: (oldIndex, newIndex) {
+                          Provider.of<InventoryProvider>(
+                            context,
+                            listen: false,
+                          ).reorderStorageType(oldIndex, newIndex);
+                        },
+                        itemBuilder: (context, index) {
+                          final storageType = storageTypes[index];
+                          final linkedItems = inventory.items
+                              .where(
+                                (item) =>
+                                    item.storageTypeId == storageType.id,
+                              )
+                              .toList();
+                          return ListTile(
+                            key: ValueKey(storageType.id),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ItemManagerScreen(
+                                  storageTypeId: storageType.id,
+                                  title: storageType.name,
+                                ),
+                              ),
+                            ),
+                            title: Text(storageType.name),
+                            subtitle: Text(
+                              _buildLinkedItemsSummary(linkedItems),
+                              style: TextStyle(color: Colors.grey[400]),
+                            ),
+                            leading: ReorderableDragStartListener(
+                              index: index,
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 12,
+                                ),
+                                child: Icon(Icons.drag_indicator),
+                              ),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit,
+                                    color: Colors.blueAccent,
+                                  ),
+                                  onPressed: () =>
+                                      _showEditDialog(context, storageType),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.redAccent,
+                                  ),
+                                  onPressed: () =>
+                                      _confirmDelete(context, storageType),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    if (showUnassigned) ...[
+                      const Divider(height: 1),
+                      ListTile(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ItemManagerScreen(
+                              unassignedStorageTypeOnly: true,
+                              title: 'Unassigned',
+                            ),
+                          ),
+                        ),
+                        leading: const Icon(
+                          Icons.inventory_2_outlined,
+                          color: Colors.grey,
+                        ),
+                        title: const Text('Unassigned'),
+                        subtitle: Text(
+                          _buildLinkedItemsSummary(unassignedItems),
+                          style: TextStyle(color: Colors.grey[400]),
                         ),
                       ),
-                    ),
-                    title: Text(storageType.name),
-                    subtitle: Text(
-                      _buildLinkedItemsSummary(linkedItems),
-                      style: TextStyle(color: Colors.grey[400]),
-                    ),
-                    leading: const Icon(Icons.drag_handle),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.edit,
-                            color: Colors.blueAccent,
-                          ),
-                          onPressed: () =>
-                              _showEditDialog(context, storageType),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.delete,
-                            color: Colors.redAccent,
-                          ),
-                          onPressed: () =>
-                              _confirmDelete(context, storageType),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                    ],
+                  ],
+                ),
               ),
       ),
       floatingActionButton: FloatingActionButton.extended(

@@ -167,10 +167,14 @@ class InventoryProvider extends ChangeNotifier {
   Future<void> reorderItem(
     int oldIndex,
     int newIndex,
-    String categoryId,
+    String? categoryId,
   ) async {
     final categoryItems = _items
-        .where((i) => i.categoryIds.contains(categoryId))
+        .where(
+          (i) => categoryId == null
+              ? i.categoryIds.isEmpty
+              : i.categoryIds.contains(categoryId),
+        )
         .toList();
 
     // Use stable sort to match UI exactly

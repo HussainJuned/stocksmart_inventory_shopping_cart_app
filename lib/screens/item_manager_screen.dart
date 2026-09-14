@@ -18,6 +18,11 @@ class ItemManagerScreen extends StatefulWidget {
   final String? categoryId;
   final String? supplierId;
   final String? storageTypeId;
+  // Shows only items with no supplier/storage type assigned. Distinct from
+  // supplierId/storageTypeId being null, which means "no filter" (show
+  // everything).
+  final bool unassignedSupplierOnly;
+  final bool unassignedStorageTypeOnly;
   final String? title;
 
   const ItemManagerScreen({
@@ -25,6 +30,8 @@ class ItemManagerScreen extends StatefulWidget {
     this.categoryId,
     this.supplierId,
     this.storageTypeId,
+    this.unassignedSupplierOnly = false,
+    this.unassignedStorageTypeOnly = false,
     this.title,
   });
 
@@ -63,7 +70,10 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.categoryId != widget.categoryId ||
         oldWidget.supplierId != widget.supplierId ||
-        oldWidget.storageTypeId != widget.storageTypeId) {
+        oldWidget.storageTypeId != widget.storageTypeId ||
+        oldWidget.unassignedSupplierOnly != widget.unassignedSupplierOnly ||
+        oldWidget.unassignedStorageTypeOnly !=
+            widget.unassignedStorageTypeOnly) {
       _cachedInventoryItems = null;
       _searchGeneration += 1;
       _scopeGeneration += 1;
@@ -184,7 +194,9 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
                           children: [
                             if (widget.categoryId != null ||
                                 widget.supplierId != null ||
-                                widget.storageTypeId != null)
+                                widget.storageTypeId != null ||
+                                widget.unassignedSupplierOnly ||
+                                widget.unassignedStorageTypeOnly)
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 16),
                                 child: Row(
@@ -192,7 +204,8 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
                                     Icon(
                                       widget.categoryId != null
                                           ? Icons.category_outlined
-                                          : widget.supplierId != null
+                                          : (widget.supplierId != null ||
+                                                widget.unassignedSupplierOnly)
                                           ? Icons.local_shipping_outlined
                                           : Icons.inventory_2_outlined,
                                       size: 18,
@@ -431,7 +444,9 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
           final showCartButton =
               (widget.categoryId != null ||
                   widget.supplierId != null ||
-                  widget.storageTypeId != null) &&
+                  widget.storageTypeId != null ||
+                  widget.unassignedSupplierOnly ||
+                  widget.unassignedStorageTypeOnly) &&
               itemCount > 0;
 
           if (!showCartButton) {
@@ -681,12 +696,14 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
     final matchesCategory =
         widget.categoryId == null ||
         item.categoryIds.contains(widget.categoryId);
-    final matchesSupplier =
-        widget.supplierId == null ||
-        item.defaultSupplierId == widget.supplierId;
-    final matchesStorageType =
-        widget.storageTypeId == null ||
-        item.storageTypeId == widget.storageTypeId;
+    final matchesSupplier = widget.unassignedSupplierOnly
+        ? item.defaultSupplierId == null
+        : widget.supplierId == null ||
+              item.defaultSupplierId == widget.supplierId;
+    final matchesStorageType = widget.unassignedStorageTypeOnly
+        ? item.storageTypeId == null
+        : widget.storageTypeId == null ||
+              item.storageTypeId == widget.storageTypeId;
     return matchesCategory && matchesSupplier && matchesStorageType;
   }
 

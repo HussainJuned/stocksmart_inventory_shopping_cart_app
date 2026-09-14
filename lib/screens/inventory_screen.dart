@@ -243,6 +243,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    // Only surface an "Uncategorized" tab when there's actually an item
+    // sitting in it — otherwise it's just clutter.
+    final showUncategorized = inventory.items.any(
+      (i) => i.categoryIds.isEmpty,
+    );
+    final tabCount = inventory.categories.length + (showUncategorized ? 1 : 0);
+
     // DefaultTabController needs to be rebuilt if length changes.
     // We can use a key derived from length/IDs to force rebuild.
     // If empty, we still provide a controller (length 0) or handle in body.
@@ -250,26 +257,23 @@ class _InventoryScreenState extends State<InventoryScreen> {
     // NOTE: AppBar actions should be visible even if empty.
 
     return DefaultTabController(
-      key: ValueKey(inventory.categories.length),
-      length: inventory.categories.isEmpty
-          ? 1
-          : inventory
-                .categories
-                .length, // Ensure at least 1 for safety if needed, or 0 if supported
+      key: ValueKey('$tabCount-$showUncategorized'),
+      length: tabCount == 0 ? 1 : tabCount,
       child: Scaffold(
         appBar: AppBar(
           title: Text(
             auth.user?.displayName ?? 'StockSmart',
             overflow: TextOverflow.ellipsis,
           ),
-          bottom: inventory.categories.isEmpty
+          bottom: tabCount == 0
               ? null
               : TabBar(
                   isScrollable: true,
                   indicatorColor: Colors.orange,
-                  tabs: inventory.categories
-                      .map((c) => Tab(text: c.name))
-                      .toList(),
+                  tabs: [
+                    ...inventory.categories.map((c) => Tab(text: c.name)),
+                    if (showUncategorized) const Tab(text: 'Uncategorized'),
+                  ],
                 ),
           actions: [
             ...[
@@ -309,7 +313,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ],
           ],
         ),
-        body: SafeArea(top: false, child: _buildBody(inventory)),
+        body: SafeArea(
+          top: false,
+          child: _buildBody(inventory, showUncategorized),
+        ),
         drawer: Drawer(
           backgroundColor: const Color(0xFF161616),
           child: Column(
@@ -671,9 +678,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  Widget _buildBody(InventoryProvider inventory) {
+  Widget _buildBody(InventoryProvider inventory, bool showUncategorized) {
     // 1. Empty Categories Mode
-    if (inventory.categories.isEmpty) {
+    if (inventory.categories.isEmpty && !showUncategorized) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -698,9 +705,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
     // 2. TabBar Mode (Default)
     return TabBarView(
-      children: inventory.categories.map((cat) {
-        return _CategoryList(categoryId: cat.id, categoryName: cat.name);
-      }).toList(),
+      children: [
+        ...inventory.categories.map(
+          (cat) => _CategoryList(categoryId: cat.id, categoryName: cat.name),
+        ),
+        if (showUncategorized)
+          const _CategoryList(categoryId: null, categoryName: 'Uncategorized'),
+      ],
     );
   }
 
@@ -741,7 +752,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
 }
 
 class _CategoryList extends StatelessWidget {
-  final String categoryId;
+  // Null categoryId means "uncategorized" (items with no category assigned).
+  final String? categoryId;
   final String categoryName;
   const _CategoryList({required this.categoryId, required this.categoryName});
 
@@ -749,10 +761,12 @@ class _CategoryList extends StatelessWidget {
   Widget build(BuildContext context) {
     final inventory = Provider.of<InventoryProvider>(context);
 
-    // Filter items by categoryId (Actually implemented now)
-    // Filter items: Check if item has THIS category
     final items = inventory.items
-        .where((i) => i.categoryIds.contains(categoryId))
+        .where(
+          (i) => categoryId == null
+              ? i.categoryIds.isEmpty
+              : i.categoryIds.contains(categoryId),
+        )
         .toList();
 
     // Or logic to show ALL if categoryId matches 'generic'?

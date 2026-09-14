@@ -1,5 +1,13 @@
 import 'package:uuid/uuid.dart';
 
+// Sentinel for copyWith's nullable fields, so "clear this field" (pass
+// null) can be told apart from "leave it unchanged" (omit the argument).
+class _Unset {
+  const _Unset();
+}
+
+const _unset = _Unset();
+
 class GroceryItem {
   final String id;
   final String name;
@@ -54,8 +62,8 @@ class GroceryItem {
   GroceryItem copyWith({
     String? name,
     List<String>? categoryIds,
-    String? defaultSupplierId,
-    String? storageTypeId,
+    Object? defaultSupplierId = _unset,
+    Object? storageTypeId = _unset,
     String? unit,
     double? parLevel,
     double? currentQuantity,
@@ -67,8 +75,12 @@ class GroceryItem {
       id: id,
       name: name ?? this.name,
       categoryIds: categoryIds ?? this.categoryIds,
-      defaultSupplierId: defaultSupplierId ?? this.defaultSupplierId,
-      storageTypeId: storageTypeId ?? this.storageTypeId,
+      defaultSupplierId: identical(defaultSupplierId, _unset)
+          ? this.defaultSupplierId
+          : defaultSupplierId as String?,
+      storageTypeId: identical(storageTypeId, _unset)
+          ? this.storageTypeId
+          : storageTypeId as String?,
       unit: unit ?? this.unit,
       parLevel: parLevel ?? this.parLevel,
       currentQuantity: currentQuantity ?? this.currentQuantity,
