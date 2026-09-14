@@ -1,6 +1,6 @@
-# StockSmart: Ramen Shop Inventory & Grocery App
+# StockSmart: Inventory & Grocery App
 
-A specialized inventory management system built for Ramen shops to streamline stock checks and automate ordering.
+A specialized inventory management system built for restaurants to streamline stock checks and ordering.
 
 ## 🚀 Application Context
 
