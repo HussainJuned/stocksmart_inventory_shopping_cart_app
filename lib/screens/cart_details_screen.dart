@@ -1297,17 +1297,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
           : getCategoryName(key);
       buffer.writeln('📦 $groupName');
 
-      String? lastSubKey;
       for (var item in groupItems) {
-        final subKey = _getSubKey(item, inventoryProvider);
-        if (subKey != lastSubKey) {
-          lastSubKey = subKey;
-          final subLabel = _groupBy == _GroupBy.supplier
-              ? getCategoryName(subKey)
-              : getSupplierName(subKey);
-          buffer.writeln('  ▸ $subLabel');
-        }
-
         final status = item.state == CartItemState.bought
             ? '✅'
             : item.state == CartItemState.skipped
