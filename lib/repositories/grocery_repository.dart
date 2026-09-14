@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' hide Category;
 import '../models/grocery_item.dart';
 import '../models/category_model.dart';
 import '../models/supplier_model.dart';
+import '../models/storage_type_model.dart';
 import '../services/firestore_service.dart';
 import '../services/hive_service.dart';
 
@@ -105,6 +106,24 @@ class GroceryRepository {
       },
       onError: (e) => debugPrint('GroceryRepository: suppliers stream error: $e'),
     ));
+
+    _subscriptions.add(service.getStorageTypesStream().listen(
+      (remoteTypes) async {
+        final localTypes = _hiveService.getStorageTypes();
+        final remoteIds = remoteTypes.map((t) => t.id).toSet();
+
+        for (final localType in localTypes) {
+          if (!remoteIds.contains(localType.id)) {
+            await _hiveService.deleteStorageType(localType.id);
+          }
+        }
+        for (var remoteType in remoteTypes) {
+          await _hiveService.saveStorageType(remoteType);
+        }
+        onSyncUpdated?.call();
+      },
+      onError: (e) => debugPrint('GroceryRepository: storage types stream error: $e'),
+    ));
   }
 
   void dispose() {
@@ -151,6 +170,26 @@ class GroceryRepository {
   Future<void> deleteSupplier(String id) async {
     await _hiveService.deleteSupplier(id);
     _firestoreService?.deleteSupplier(id);
+  }
+
+  // --- Storage Types ---
+  List<StorageType> getStorageTypes() {
+    return _hiveService.getStorageTypes();
+  }
+
+  Future<void> addStorageType(StorageType storageType) async {
+    await _hiveService.saveStorageType(storageType);
+    _firestoreService?.saveStorageType(storageType);
+  }
+
+  Future<void> updateStorageType(StorageType storageType) async {
+    await _hiveService.saveStorageType(storageType);
+    _firestoreService?.saveStorageType(storageType);
+  }
+
+  Future<void> deleteStorageType(String id) async {
+    await _hiveService.deleteStorageType(id);
+    _firestoreService?.deleteStorageType(id);
   }
 
   Future<void> clearAllData() async {

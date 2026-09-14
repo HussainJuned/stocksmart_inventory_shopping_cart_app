@@ -17,6 +17,7 @@ class _AddItemModalState extends State<AddItemModal> {
   String _selectedUnit = 'kg';
   List<String> _selectedCategoryIds = [];
   String? _selectedSupplierId;
+  String? _selectedStorageTypeId;
   bool _isSaving = false;
 
   @override
@@ -30,6 +31,7 @@ class _AddItemModalState extends State<AddItemModal> {
       _selectedUnit = widget.itemToEdit!.unit;
       _selectedCategoryIds = List.from(widget.itemToEdit!.categoryIds);
       _selectedSupplierId = widget.itemToEdit!.defaultSupplierId;
+      _selectedStorageTypeId = widget.itemToEdit!.storageTypeId;
     } else {
       _nameController = TextEditingController();
       _parController = TextEditingController(text: '5');
@@ -191,6 +193,44 @@ class _AddItemModalState extends State<AddItemModal> {
                 );
               },
             ),
+            const SizedBox(height: 16),
+            const Text(
+              'Storage Type (Optional)',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Consumer<InventoryProvider>(
+              builder: (context, inventory, child) {
+                if (inventory.storageTypes.isEmpty) {
+                  return const Text(
+                    'No storage types added. Go to "Manage Storage Types" to add one.',
+                  );
+                }
+                return DropdownButtonFormField<String>(
+                  value: _selectedStorageTypeId,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('None'),
+                    ),
+                    ...inventory.storageTypes.map((t) {
+                      return DropdownMenuItem<String>(
+                        value: t.id,
+                        child: Text(t.name),
+                      );
+                    }),
+                  ],
+                  onChanged: (v) => setState(() => _selectedStorageTypeId = v),
+                );
+              },
+            ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -240,6 +280,7 @@ class _AddItemModalState extends State<AddItemModal> {
           unit: _selectedUnit,
           parLevel: double.tryParse(_parController.text) ?? 0,
           defaultSupplierId: _selectedSupplierId,
+          storageTypeId: _selectedStorageTypeId,
         );
         await inventory.updateItem(updatedItem);
       } else {
@@ -249,6 +290,7 @@ class _AddItemModalState extends State<AddItemModal> {
           unit: _selectedUnit,
           parLevel: double.tryParse(_parController.text) ?? 0,
           defaultSupplierId: _selectedSupplierId,
+          storageTypeId: _selectedStorageTypeId,
         );
         await inventory.addItem(newItem);
       }

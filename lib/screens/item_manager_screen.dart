@@ -15,12 +15,14 @@ const int _itemSearchPageSize = 200;
 class ItemManagerScreen extends StatefulWidget {
   final String? categoryId;
   final String? supplierId;
+  final String? storageTypeId;
   final String? title;
 
   const ItemManagerScreen({
     super.key,
     this.categoryId,
     this.supplierId,
+    this.storageTypeId,
     this.title,
   });
 
@@ -57,7 +59,8 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
   void didUpdateWidget(covariant ItemManagerScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.categoryId != widget.categoryId ||
-        oldWidget.supplierId != widget.supplierId) {
+        oldWidget.supplierId != widget.supplierId ||
+        oldWidget.storageTypeId != widget.storageTypeId) {
       _cachedInventoryItems = null;
       _searchGeneration += 1;
       _scopeGeneration += 1;
@@ -160,7 +163,8 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             if (widget.categoryId != null ||
-                                widget.supplierId != null)
+                                widget.supplierId != null ||
+                                widget.storageTypeId != null)
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 16),
                                 child: Row(
@@ -168,7 +172,9 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
                                     Icon(
                                       widget.categoryId != null
                                           ? Icons.category_outlined
-                                          : Icons.local_shipping_outlined,
+                                          : widget.supplierId != null
+                                          ? Icons.local_shipping_outlined
+                                          : Icons.inventory_2_outlined,
                                       size: 18,
                                       color: Colors.orange,
                                     ),
@@ -403,7 +409,9 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
               ? cartProvider.getItemsForList(activeCart.id).length
               : 0;
           final showCartButton =
-              (widget.categoryId != null || widget.supplierId != null) &&
+              (widget.categoryId != null ||
+                  widget.supplierId != null ||
+                  widget.storageTypeId != null) &&
               itemCount > 0;
 
           if (!showCartButton) {
@@ -612,7 +620,10 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
     final matchesSupplier =
         widget.supplierId == null ||
         item.defaultSupplierId == widget.supplierId;
-    return matchesCategory && matchesSupplier;
+    final matchesStorageType =
+        widget.storageTypeId == null ||
+        item.storageTypeId == widget.storageTypeId;
+    return matchesCategory && matchesSupplier && matchesStorageType;
   }
 
   Future<void> _applySearch(String normalizedQuery) async {

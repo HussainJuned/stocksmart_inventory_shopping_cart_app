@@ -5,6 +5,7 @@ class GroceryItem {
   final String name;
   final List<String> categoryIds; // Changed from single categoryId
   final String? defaultSupplierId;
+  final String? storageTypeId; // Link to StorageType (dry, fresh, drinks...)
   final String unit; // kg, g, pcs, L
   final double parLevel;
   final double currentQuantity;
@@ -17,6 +18,7 @@ class GroceryItem {
     required this.name,
     required this.categoryIds,
     this.defaultSupplierId,
+    this.storageTypeId,
     required this.unit,
     required this.parLevel,
     required this.currentQuantity,
@@ -29,6 +31,7 @@ class GroceryItem {
     required String name,
     required List<String> categoryIds,
     String? defaultSupplierId,
+    String? storageTypeId,
     required String unit,
     required double parLevel,
     double sortOrder = 0.0,
@@ -38,6 +41,7 @@ class GroceryItem {
       name: name,
       categoryIds: categoryIds,
       defaultSupplierId: defaultSupplierId,
+      storageTypeId: storageTypeId,
       unit: unit,
       parLevel: parLevel,
       currentQuantity: 0.0,
@@ -51,6 +55,7 @@ class GroceryItem {
     String? name,
     List<String>? categoryIds,
     String? defaultSupplierId,
+    String? storageTypeId,
     String? unit,
     double? parLevel,
     double? currentQuantity,
@@ -63,6 +68,7 @@ class GroceryItem {
       name: name ?? this.name,
       categoryIds: categoryIds ?? this.categoryIds,
       defaultSupplierId: defaultSupplierId ?? this.defaultSupplierId,
+      storageTypeId: storageTypeId ?? this.storageTypeId,
       unit: unit ?? this.unit,
       parLevel: parLevel ?? this.parLevel,
       currentQuantity: currentQuantity ?? this.currentQuantity,
@@ -78,6 +84,7 @@ class GroceryItem {
       'name': name,
       'categoryIds': categoryIds,
       'defaultSupplierId': defaultSupplierId,
+      'storageTypeId': storageTypeId,
       'unit': unit,
       'parLevel': parLevel,
       'currentQuantity': currentQuantity,
@@ -103,6 +110,7 @@ class GroceryItem {
       defaultSupplierId:
           map['defaultSupplierId'] ??
           map['supplierId'], // Check both for migration
+      storageTypeId: map['storageTypeId'],
       unit: map['unit'],
       parLevel: (map['parLevel'] as num).toDouble(),
       currentQuantity: (map['currentQuantity'] as num).toDouble(),

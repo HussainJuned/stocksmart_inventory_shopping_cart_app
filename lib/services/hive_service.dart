@@ -2,12 +2,14 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/grocery_item.dart';
 import '../models/category_model.dart';
 import '../models/supplier_model.dart';
+import '../models/storage_type_model.dart';
 import '../models/shopping_list_model.dart';
 
 class HiveService {
   static const String boxItems = 'grocery_items';
   static const String boxCategories = 'categories';
   static const String boxSuppliers = 'suppliers';
+  static const String boxStorageTypes = 'storage_types';
   static const String boxShoppingLists = 'shopping_lists';
   static const String boxCartItems = 'cart_items';
   static const String boxPreferences = 'preferences';
@@ -17,6 +19,7 @@ class HiveService {
     await Hive.openBox<Map>(boxItems);
     await Hive.openBox<Map>(boxCategories);
     await Hive.openBox<Map>(boxSuppliers);
+    await Hive.openBox<Map>(boxStorageTypes);
     await Hive.openBox<Map>(boxShoppingLists);
     await Hive.openBox<Map>(boxCartItems);
     if (!Hive.isBoxOpen(boxPreferences)) {
@@ -28,6 +31,7 @@ class HiveService {
     await Hive.box<Map>(boxItems).clear();
     await Hive.box<Map>(boxCategories).clear();
     await Hive.box<Map>(boxSuppliers).clear();
+    await Hive.box<Map>(boxStorageTypes).clear();
     await Hive.box<Map>(boxShoppingLists).clear();
     await Hive.box<Map>(boxCartItems).clear();
     // Preferences are intentionally not cleared on logout — they are device-level settings.
@@ -93,6 +97,24 @@ class HiveService {
 
   Future<void> deleteSupplier(String id) async {
     final box = Hive.box<Map>(boxSuppliers);
+    await box.delete(id);
+  }
+
+  // --- Storage Types ---
+  List<StorageType> getStorageTypes() {
+    final box = Hive.box<Map>(boxStorageTypes);
+    return box.values
+        .map((e) => StorageType.fromMap(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  Future<void> saveStorageType(StorageType storageType) async {
+    final box = Hive.box<Map>(boxStorageTypes);
+    await box.put(storageType.id, storageType.toMap());
+  }
+
+  Future<void> deleteStorageType(String id) async {
+    final box = Hive.box<Map>(boxStorageTypes);
     await box.delete(id);
   }
 

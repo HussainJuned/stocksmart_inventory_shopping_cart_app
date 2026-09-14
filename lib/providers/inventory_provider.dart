@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' hide Category;
 import '../models/grocery_item.dart';
 import '../models/category_model.dart';
 import '../models/supplier_model.dart';
+import '../models/storage_type_model.dart';
 import '../repositories/grocery_repository.dart';
 import '../services/hive_service.dart';
 import '../services/firestore_service.dart';
@@ -13,6 +14,7 @@ class InventoryProvider extends ChangeNotifier {
   List<GroceryItem> _items = [];
   final List<Category> _categories = [];
   final List<Supplier> _suppliers = [];
+  final List<StorageType> _storageTypes = [];
 
   bool _isLoading = true;
   bool get isLoading => _isLoading;
@@ -20,6 +22,7 @@ class InventoryProvider extends ChangeNotifier {
   List<GroceryItem> get items => _items;
   List<Category> get categories => _categories;
   List<Supplier> get suppliers => _suppliers;
+  List<StorageType> get storageTypes => _storageTypes;
 
   InventoryProvider() {
     // Initial dummy repository, updated via update() in ProxyProvider
@@ -73,6 +76,10 @@ class InventoryProvider extends ChangeNotifier {
 
     _suppliers.clear();
     _suppliers.addAll(_repository.getSuppliers());
+
+    _storageTypes.clear();
+    _storageTypes.addAll(_repository.getStorageTypes());
+    _storageTypes.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
     notifyListeners();
   }
@@ -252,6 +259,57 @@ class InventoryProvider extends ChangeNotifier {
   Future<void> deleteSupplier(String id) async {
     await _repository.deleteSupplier(id);
     _fetchLocal();
+  }
+
+  Future<void> addStorageType(String name) async {
+    final newType = StorageType.create(
+      name: name,
+      color: '#FF9900',
+      sortOrder: _storageTypes.length,
+    );
+    await _repository.addStorageType(newType);
+    _fetchLocal();
+  }
+
+  Future<void> updateStorageType(StorageType storageType) async {
+    await _repository.updateStorageType(storageType);
+    _fetchLocal();
+  }
+
+  Future<void> deleteStorageType(String id) async {
+    await _repository.deleteStorageType(id);
+    _fetchLocal();
+  }
+
+  Future<void> reorderStorageType(int oldIndex, int newIndex) async {
+    // ReorderableListView reports newIndex after removal, so adjust
+    if (oldIndex < newIndex) newIndex -= 1;
+    if (oldIndex == newIndex) return;
+
+    final reordered = List<StorageType>.from(_storageTypes);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+
+    // Re-assign sequential sortOrder values
+    for (int i = 0; i < reordered.length; i++) {
+      final type = reordered[i];
+      if (type.sortOrder != i) {
+        final updated = StorageType(
+          id: type.id,
+          name: type.name,
+          color: type.color,
+          sortOrder: i,
+        );
+        reordered[i] = updated;
+        _repository.updateStorageType(updated);
+      }
+    }
+
+    _storageTypes
+      ..clear()
+      ..addAll(reordered);
+
+    notifyListeners();
   }
 
   Future<void> importFromJson(String jsonString) async {

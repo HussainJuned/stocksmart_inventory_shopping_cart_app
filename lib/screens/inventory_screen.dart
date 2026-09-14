@@ -12,6 +12,7 @@ import 'cart_details_screen.dart';
 import 'category_manager_screen.dart';
 import 'item_manager_screen.dart';
 import 'supplier_manager_screen.dart';
+import 'storage_type_manager_screen.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -400,6 +401,20 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => const SupplierManagerScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _drawerTile(
+                      icon: Icons.inventory_2_outlined,
+                      iconColor: Colors.amber,
+                      label: 'Manage Storage Types',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const StorageTypeManagerScreen(),
                           ),
                         );
                       },

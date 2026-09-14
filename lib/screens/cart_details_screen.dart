@@ -10,7 +10,7 @@ import '../providers/cart_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../widgets/cart_search_modal.dart';
 
-enum _GroupBy { supplier, category }
+enum _GroupBy { supplier, category, storageType }
 
 class CartDetailsScreen extends StatefulWidget {
   final String listId;
@@ -22,6 +22,12 @@ class CartDetailsScreen extends StatefulWidget {
 
 class _CartDetailsScreenState extends State<CartDetailsScreen> {
   _GroupBy _groupBy = _GroupBy.supplier;
+  // null = no secondary (sub-)grouping.
+  _GroupBy? _secondaryGroupBy;
+  // PopupMenuButton treats a selected item's `value` of literal `null` the
+  // same as the menu being dismissed without a selection, so `onSelected`
+  // never fires for it. Use this sentinel instead for the "none" item.
+  static const Object _noSecondaryGroupBy = Object();
 
   @override
   Widget build(BuildContext context) {
@@ -70,6 +76,31 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
       }
     }
 
+    // ── Storage Type helpers ────────────────────────────────────────────────
+    String getStorageTypeName(String id) {
+      if (id == 'unassigned') return 'Unassigned';
+      try {
+        return inventoryProvider.storageTypes
+            .firstWhere((t) => t.id == id)
+            .name;
+      } catch (_) {
+        return 'Unknown Storage Type';
+      }
+    }
+
+    Color getStorageTypeColor(String id) {
+      if (id == 'unassigned') return Colors.grey;
+      try {
+        final hex = inventoryProvider.storageTypes
+            .firstWhere((t) => t.id == id)
+            .color
+            .replaceFirst('#', '');
+        return Color(int.parse('FF$hex', radix: 16));
+      } catch (_) {
+        return Colors.amber;
+      }
+    }
+
     // ── Build grouped data based on mode ────────────────────────────────────
     final Map<String, List<CartItem>> groupedItems = {};
     List<String> sortedKeys;
@@ -85,7 +116,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
           if (b == 'unknown') return -1;
           return getSupplierName(a).compareTo(getSupplierName(b));
         });
-    } else {
+    } else if (_groupBy == _GroupBy.category) {
       for (var cartItem in items) {
         String key = 'uncategorized';
         try {
@@ -112,58 +143,78 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
             return 0;
           }
         });
-    }
-
-    // ── Secondary sort within each group ────────────────────────────────────
-    // Grouped by supplier → order items within each group by category sortOrder
-    // Grouped by category → order items within each group by supplier name
-    int _getCategorySortOrder(CartItem cartItem) {
-      try {
-        final gi = inventoryProvider.items.firstWhere(
-          (i) => i.id == cartItem.itemId,
-        );
-        if (gi.categoryIds.isEmpty) return 9999;
-        return inventoryProvider.categories
-            .firstWhere((c) => c.id == gi.categoryIds.first)
-            .sortOrder;
-      } catch (_) {
-        return 9999;
+    } else {
+      for (var cartItem in items) {
+        String key = 'unassigned';
+        try {
+          final gi = inventoryProvider.items.firstWhere(
+            (i) => i.id == cartItem.itemId,
+          );
+          if (gi.storageTypeId != null) key = gi.storageTypeId!;
+        } catch (_) {}
+        groupedItems.putIfAbsent(key, () => []).add(cartItem);
       }
-    }
-
-    String _getItemSupplierName(CartItem cartItem) {
-      return getSupplierName(cartItem.supplierId ?? 'unknown');
-    }
-
-    for (final groupItems in groupedItems.values) {
-      if (_groupBy == _GroupBy.supplier) {
-        groupItems.sort((a, b) {
-          final orderA = _getCategorySortOrder(a);
-          final orderB = _getCategorySortOrder(b);
-          final cmp = orderA.compareTo(orderB);
-          if (cmp != 0) return cmp;
-          return a.name.compareTo(b.name);
+      sortedKeys = groupedItems.keys.toList()
+        ..sort((a, b) {
+          if (a == 'unassigned') return 1;
+          if (b == 'unassigned') return -1;
+          try {
+            final orderA = inventoryProvider.storageTypes
+                .firstWhere((t) => t.id == a)
+                .sortOrder;
+            final orderB = inventoryProvider.storageTypes
+                .firstWhere((t) => t.id == b)
+                .sortOrder;
+            return orderA.compareTo(orderB);
+          } catch (_) {
+            return 0;
+          }
         });
-      } else {
-        groupItems.sort((a, b) {
-          final cmp = _getItemSupplierName(
-            a,
-          ).compareTo(_getItemSupplierName(b));
-          if (cmp != 0) return cmp;
-          return a.name.compareTo(b.name);
-        });
-      }
     }
 
-    // Pre-compute flat item+sub-header data per group (used by SliverList)
+    // Sort items within each group, then (if a secondary grouping is set)
+    // interleave sub-group headers into a flat per-group render list.
     final flatGroupItems = <String, List<Object>>{};
     for (final key in sortedKeys) {
       final groupItems = groupedItems[key]!;
+      final subDim = _secondaryGroupBy;
+
+      if (subDim == null) {
+        groupItems.sort((a, b) => a.name.compareTo(b.name));
+        flatGroupItems[key] = groupItems;
+        continue;
+      }
+
+      groupItems.sort((a, b) {
+        final subKeyA = _rawKeyFor(subDim, a, inventoryProvider);
+        final subKeyB = _rawKeyFor(subDim, b, inventoryProvider);
+        final orderA = _sortOrderFor(subDim, subKeyA, inventoryProvider);
+        final orderB = _sortOrderFor(subDim, subKeyB, inventoryProvider);
+        final cmp = orderA != null && orderB != null
+            ? orderA.compareTo(orderB)
+            : _displayNameFor(
+                subDim,
+                subKeyA,
+                getSupplierName,
+                getCategoryName,
+                getStorageTypeName,
+              ).compareTo(
+                _displayNameFor(
+                  subDim,
+                  subKeyB,
+                  getSupplierName,
+                  getCategoryName,
+                  getStorageTypeName,
+                ),
+              );
+        if (cmp != 0) return cmp;
+        return a.name.compareTo(b.name);
+      });
+
       final flat = <Object>[];
       String? lastSubKey;
-      for (int i = 0; i < groupItems.length; i++) {
-        final item = groupItems[i];
-        final subKey = _getSubKey(item, inventoryProvider);
+      for (final item in groupItems) {
+        final subKey = _rawKeyFor(subDim, item, inventoryProvider);
         if (subKey != lastSubKey) {
           lastSubKey = subKey;
           flat.add(_SubHeaderData(subKey));
@@ -196,11 +247,56 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                   icon: Icon(Icons.category_outlined, size: 16),
                   tooltip: 'Group by category',
                 ),
+                ButtonSegment(
+                  value: _GroupBy.storageType,
+                  icon: Icon(Icons.inventory_2_outlined, size: 16),
+                  tooltip: 'Group by storage type',
+                ),
               ],
               selected: {_groupBy},
               onSelectionChanged: (Set<_GroupBy> selection) {
-                setState(() => _groupBy = selection.first);
+                setState(() {
+                  _groupBy = selection.first;
+                  // A dimension can't be both primary and secondary.
+                  if (_secondaryGroupBy == _groupBy) {
+                    _secondaryGroupBy = null;
+                  }
+                });
               },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: PopupMenuButton<Object>(
+              tooltip: 'Then group by…',
+              icon: Icon(
+                Icons.layers_outlined,
+                size: 18,
+                color: _secondaryGroupBy != null
+                    ? Colors.deepOrange
+                    : Colors.white70,
+              ),
+              onSelected: (value) {
+                setState(
+                  () => _secondaryGroupBy = value == _noSecondaryGroupBy
+                      ? null
+                      : value as _GroupBy,
+                );
+              },
+              itemBuilder: (context) => [
+                CheckedPopupMenuItem<Object>(
+                  value: _noSecondaryGroupBy,
+                  checked: _secondaryGroupBy == null,
+                  child: const Text('No secondary grouping'),
+                ),
+                for (final dim in _GroupBy.values)
+                  if (dim != _groupBy)
+                    CheckedPopupMenuItem<Object>(
+                      value: dim,
+                      checked: _secondaryGroupBy == dim,
+                      child: Text('Then by ${_groupByLabel(dim)}'),
+                    ),
+              ],
             ),
           ),
         ],
@@ -237,6 +333,8 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                       getSupplierName: getSupplierName,
                       getCategoryName: getCategoryName,
                       getCategoryColor: getCategoryColor,
+                      getStorageTypeName: getStorageTypeName,
+                      getStorageTypeColor: getStorageTypeColor,
                     ),
                   ),
                   SliverList(
@@ -245,10 +343,13 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                       final entry = flatGroupItems[key]![index];
                       if (entry is _SubHeaderData) {
                         return _buildSubGroupHeader(
+                          _secondaryGroupBy!,
                           entry.subKey,
                           getSupplierName,
                           getCategoryName,
+                          getStorageTypeName,
                           getCategoryColor,
+                          getStorageTypeColor,
                         );
                       }
                       final item = entry as CartItem;
@@ -652,6 +753,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                       items,
                       getSupplierName,
                       getCategoryName,
+                      getStorageTypeName,
                     ),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -693,6 +795,33 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(width: 12),
+                Tooltip(
+                  message: 'Copy as text',
+                  child: GestureDetector(
+                    onTap: () => _copyShareText(
+                      context,
+                      items,
+                      getSupplierName,
+                      getCategoryName,
+                      getStorageTypeName,
+                    ),
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        Icons.content_copy_outlined,
+                        size: 18,
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -710,14 +839,21 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
     required String Function(String) getSupplierName,
     required String Function(String) getCategoryName,
     required Color Function(String) getCategoryColor,
+    required String Function(String) getStorageTypeName,
+    required Color Function(String) getStorageTypeColor,
   }) {
-    final isCategory = _groupBy == _GroupBy.category;
-    final label = isCategory
-        ? getCategoryName(groupKey).toUpperCase()
-        : getSupplierName(groupKey).toUpperCase();
-    final accent = isCategory
-        ? getCategoryColor(groupKey)
-        : Colors.orange.withOpacity(0.8);
+    final showDot =
+        _groupBy == _GroupBy.category || _groupBy == _GroupBy.storageType;
+    final label = switch (_groupBy) {
+      _GroupBy.category => getCategoryName(groupKey).toUpperCase(),
+      _GroupBy.storageType => getStorageTypeName(groupKey).toUpperCase(),
+      _GroupBy.supplier => getSupplierName(groupKey).toUpperCase(),
+    };
+    final accent = switch (_groupBy) {
+      _GroupBy.category => getCategoryColor(groupKey),
+      _GroupBy.storageType => getStorageTypeColor(groupKey),
+      _GroupBy.supplier => Colors.orange.withOpacity(0.8),
+    };
 
     final badgeText = pendingCount == itemCount
         ? '$itemCount ITEMS'
@@ -743,7 +879,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
         children: [
           Row(
             children: [
-              if (isCategory)
+              if (showDot)
                 Container(
                   width: 10,
                   height: 10,
@@ -784,44 +920,120 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
     );
   }
 
-  // ── Secondary sub-group key ────────────────────────────────────────────────
-  String _getSubKey(CartItem item, InventoryProvider inventoryProvider) {
-    if (_groupBy == _GroupBy.supplier) {
-      try {
-        final gi = inventoryProvider.items.firstWhere(
-          (i) => i.id == item.itemId,
-        );
-        return gi.categoryIds.isNotEmpty
-            ? gi.categoryIds.first
-            : 'uncategorized';
-      } catch (_) {
-        return 'uncategorized';
-      }
-    } else {
-      return item.supplierId ?? 'unknown';
+  // ── Cross-dimension grouping helpers ─────────────────────────────────────
+  // Shared by the primary grouping pass, the secondary (sub-)grouping pass,
+  // and the share-text builder, so all three stay in sync.
+
+  String _fallbackKeyFor(_GroupBy dim) => switch (dim) {
+    _GroupBy.supplier => 'unknown',
+    _GroupBy.category => 'uncategorized',
+    _GroupBy.storageType => 'unassigned',
+  };
+
+  String _rawKeyFor(_GroupBy dim, CartItem item, InventoryProvider inv) {
+    switch (dim) {
+      case _GroupBy.supplier:
+        return item.supplierId ?? 'unknown';
+      case _GroupBy.category:
+        try {
+          final gi = inv.items.firstWhere((i) => i.id == item.itemId);
+          return gi.categoryIds.isNotEmpty
+              ? gi.categoryIds.first
+              : 'uncategorized';
+        } catch (_) {
+          return 'uncategorized';
+        }
+      case _GroupBy.storageType:
+        try {
+          final gi = inv.items.firstWhere((i) => i.id == item.itemId);
+          return gi.storageTypeId ?? 'unassigned';
+        } catch (_) {
+          return 'unassigned';
+        }
     }
   }
 
-  // ── Sub-group header ─────────────────────────────────────────────────────────
+  /// Underlying sortOrder for a key, when the dimension has one (category,
+  /// storage type). Null for supplier (and any unresolved key), signalling
+  /// callers to fall back to sorting by display name instead.
+  int? _sortOrderFor(_GroupBy dim, String key, InventoryProvider inv) {
+    switch (dim) {
+      case _GroupBy.supplier:
+        return null;
+      case _GroupBy.category:
+        try {
+          return inv.categories.firstWhere((c) => c.id == key).sortOrder;
+        } catch (_) {
+          return null;
+        }
+      case _GroupBy.storageType:
+        try {
+          return inv.storageTypes.firstWhere((t) => t.id == key).sortOrder;
+        } catch (_) {
+          return null;
+        }
+    }
+  }
+
+  String _displayNameFor(
+    _GroupBy dim,
+    String key,
+    String Function(String) getSupplierName,
+    String Function(String) getCategoryName,
+    String Function(String) getStorageTypeName,
+  ) => switch (dim) {
+    _GroupBy.supplier => getSupplierName(key),
+    _GroupBy.category => getCategoryName(key),
+    _GroupBy.storageType => getStorageTypeName(key),
+  };
+
+  Color _displayColorFor(
+    _GroupBy dim,
+    String key,
+    Color Function(String) getCategoryColor,
+    Color Function(String) getStorageTypeColor,
+  ) => switch (dim) {
+    _GroupBy.supplier => Colors.white.withOpacity(0.35),
+    _GroupBy.category => getCategoryColor(key),
+    _GroupBy.storageType => getStorageTypeColor(key),
+  };
+
+  String _groupByLabel(_GroupBy dim) => switch (dim) {
+    _GroupBy.supplier => 'Supplier',
+    _GroupBy.category => 'Category',
+    _GroupBy.storageType => 'Storage Type',
+  };
+
+  // ── Sub-group header ─────────────────────────────────────────────────────
   Widget _buildSubGroupHeader(
+    _GroupBy dimension,
     String subKey,
     String Function(String) getSupplierName,
     String Function(String) getCategoryName,
+    String Function(String) getStorageTypeName,
     Color Function(String) getCategoryColor,
+    Color Function(String) getStorageTypeColor,
   ) {
-    final isCategory = _groupBy == _GroupBy.supplier;
-    final label = isCategory
-        ? getCategoryName(subKey)
-        : getSupplierName(subKey);
-    final color = isCategory
-        ? getCategoryColor(subKey)
-        : Colors.white.withOpacity(0.35);
+    final label = _displayNameFor(
+      dimension,
+      subKey,
+      getSupplierName,
+      getCategoryName,
+      getStorageTypeName,
+    );
+    final hasDot = dimension != _GroupBy.supplier;
+    final color = _displayColorFor(
+      dimension,
+      subKey,
+      getCategoryColor,
+      getStorageTypeColor,
+    );
 
     return Padding(
       padding: const EdgeInsets.only(left: 20, right: 16, top: 10, bottom: 2),
       child: Row(
         children: [
-          if (isCategory)
+          if (hasDot)
             Container(
               width: 6,
               height: 6,
@@ -1191,17 +1403,20 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
   }
 
   // ── Share ───────────────────────────────────────────────────────────────────
-  void _shareCart(
+  /// Builds the shareable order text. Returns null (and shows a snackbar) if
+  /// the cart is empty.
+  ({String text, String subject})? _buildShareText(
     BuildContext context,
     List<CartItem> items,
     String Function(String) getSupplierName,
     String Function(String) getCategoryName,
+    String Function(String) getStorageTypeName,
   ) {
     if (items.isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Cart is empty')));
-      return;
+      return null;
     }
 
     final inventoryProvider = Provider.of<InventoryProvider>(
@@ -1216,7 +1431,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
             .putIfAbsent(item.supplierId ?? 'unknown', () => [])
             .add(item);
       }
-    } else {
+    } else if (_groupBy == _GroupBy.category) {
       for (var cartItem in items) {
         String key = 'uncategorized';
         try {
@@ -1227,19 +1442,34 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
         } catch (_) {}
         groupedItems.putIfAbsent(key, () => []).add(cartItem);
       }
+    } else {
+      for (var cartItem in items) {
+        String key = 'unassigned';
+        try {
+          final gi = inventoryProvider.items.firstWhere(
+            (i) => i.id == cartItem.itemId,
+          );
+          if (gi.storageTypeId != null) key = gi.storageTypeId!;
+        } catch (_) {}
+        groupedItems.putIfAbsent(key, () => []).add(cartItem);
+      }
     }
 
+    final fallbackKey = _fallbackKeyFor(_groupBy);
     final sortedKeys = groupedItems.keys.toList()
       ..sort((a, b) {
-        const fallbacks = {'unknown', 'uncategorized'};
-        if (fallbacks.contains(a)) return 1;
-        if (fallbacks.contains(b)) return -1;
-        final nameA = _groupBy == _GroupBy.supplier
-            ? getSupplierName(a)
-            : getCategoryName(a);
-        final nameB = _groupBy == _GroupBy.supplier
-            ? getSupplierName(b)
-            : getCategoryName(b);
+        if (a == fallbackKey) return 1;
+        if (b == fallbackKey) return -1;
+        final nameA = switch (_groupBy) {
+          _GroupBy.supplier => getSupplierName(a),
+          _GroupBy.category => getCategoryName(a),
+          _GroupBy.storageType => getStorageTypeName(a),
+        };
+        final nameB = switch (_groupBy) {
+          _GroupBy.supplier => getSupplierName(b),
+          _GroupBy.category => getCategoryName(b),
+          _GroupBy.storageType => getStorageTypeName(b),
+        };
         return nameA.compareTo(nameB);
       });
 
@@ -1249,9 +1479,11 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
         'Order List';
     final now = DateTime.now();
     final dateStr = DateFormat('EEE, dd MMM · HH:mm').format(now);
-    final modeLabel = _groupBy == _GroupBy.supplier
-        ? 'By Supplier'
-        : 'By Category';
+    final modeLabel = switch (_groupBy) {
+      _GroupBy.supplier => 'By Supplier',
+      _GroupBy.category => 'By Category',
+      _GroupBy.storageType => 'By Storage Type',
+    };
 
     // ── Stats ──────────────────────────────────────────────────────────────
     final boughtCount = items
@@ -1292,12 +1524,61 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
     // Groups with sub-groups, stock context and notes
     for (var key in sortedKeys) {
       final groupItems = groupedItems[key]!;
-      final groupName = _groupBy == _GroupBy.supplier
-          ? getSupplierName(key)
-          : getCategoryName(key);
+      final groupName = switch (_groupBy) {
+        _GroupBy.supplier => getSupplierName(key),
+        _GroupBy.category => getCategoryName(key),
+        _GroupBy.storageType => getStorageTypeName(key),
+      };
       buffer.writeln('📦 $groupName');
 
+      final subDim = _secondaryGroupBy;
+      if (subDim != null) {
+        groupItems.sort((a, b) {
+          final subKeyA = _rawKeyFor(subDim, a, inventoryProvider);
+          final subKeyB = _rawKeyFor(subDim, b, inventoryProvider);
+          final orderA = _sortOrderFor(subDim, subKeyA, inventoryProvider);
+          final orderB = _sortOrderFor(subDim, subKeyB, inventoryProvider);
+          final cmp = orderA != null && orderB != null
+              ? orderA.compareTo(orderB)
+              : _displayNameFor(
+                  subDim,
+                  subKeyA,
+                  getSupplierName,
+                  getCategoryName,
+                  getStorageTypeName,
+                ).compareTo(
+                  _displayNameFor(
+                    subDim,
+                    subKeyB,
+                    getSupplierName,
+                    getCategoryName,
+                    getStorageTypeName,
+                  ),
+                );
+          if (cmp != 0) return cmp;
+          return a.name.compareTo(b.name);
+        });
+      } else {
+        groupItems.sort((a, b) => a.name.compareTo(b.name));
+      }
+
+      String? lastSubKey;
       for (var item in groupItems) {
+        if (subDim != null) {
+          final subKey = _rawKeyFor(subDim, item, inventoryProvider);
+          if (subKey != lastSubKey) {
+            lastSubKey = subKey;
+            final subLabel = _displayNameFor(
+              subDim,
+              subKey,
+              getSupplierName,
+              getCategoryName,
+              getStorageTypeName,
+            );
+            buffer.writeln('  ▸ $subLabel');
+          }
+        }
+
         final status = item.state == CartItemState.bought
             ? '✅'
             : item.state == CartItemState.skipped
@@ -1338,36 +1619,104 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
     buffer.writeln();
 
     final shareText = buffer.toString();
+    final subject =
+        '$restaurantName – Order List ${DateFormat('dd MMM').format(now)}';
+
+    return (text: shareText, subject: subject);
+  }
+
+  /// Invokes the OS/browser share sheet. Falls back to copying the text to
+  /// the clipboard (with a manual review dialog) if sharing isn't available
+  /// — e.g. desktop Chrome, where the Web Share API is often unsupported.
+  Future<void> _shareCart(
+    BuildContext context,
+    List<CartItem> items,
+    String Function(String) getSupplierName,
+    String Function(String) getCategoryName,
+    String Function(String) getStorageTypeName,
+  ) async {
+    final built = _buildShareText(
+      context,
+      items,
+      getSupplierName,
+      getCategoryName,
+      getStorageTypeName,
+    );
+    if (built == null) return;
 
     try {
-      Share.share(
-        shareText,
-        subject:
-            '$restaurantName – Order List ${DateFormat('dd MMM').format(now)}',
-      );
+      await Share.share(built.text, subject: built.subject);
     } catch (_) {
+      if (!context.mounted) return;
+      await Clipboard.setData(ClipboardData(text: built.text));
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('📋 Shopping list copied to clipboard!'),
-          action: SnackBarAction(label: 'OK', onPressed: () {}),
+        const SnackBar(
+          content: Text('📋 Sharing isn\'t available — copied to clipboard'),
           duration: kSnackBarDuration,
-          persist: false,
         ),
       );
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Shopping List'),
-          content: SingleChildScrollView(child: SelectableText(shareText)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      );
+      _showShareTextDialog(context, built.text);
     }
+  }
+
+  /// Copies the order text straight to the clipboard — a reliable option on
+  /// platforms (like desktop Chrome) where the native share sheet is
+  /// unavailable or doesn't offer a plain-text copy target.
+  Future<void> _copyShareText(
+    BuildContext context,
+    List<CartItem> items,
+    String Function(String) getSupplierName,
+    String Function(String) getCategoryName,
+    String Function(String) getStorageTypeName,
+  ) async {
+    final built = _buildShareText(
+      context,
+      items,
+      getSupplierName,
+      getCategoryName,
+      getStorageTypeName,
+    );
+    if (built == null) return;
+
+    await Clipboard.setData(ClipboardData(text: built.text));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('📋 Order list copied to clipboard!'),
+        duration: kSnackBarDuration,
+      ),
+    );
+  }
+
+  void _showShareTextDialog(BuildContext context, String shareText) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Order List'),
+        content: SingleChildScrollView(child: SelectableText(shareText)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: shareText));
+              if (!ctx.mounted) return;
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                const SnackBar(
+                  content: Text('📋 Copied to clipboard!'),
+                  duration: kSnackBarDuration,
+                ),
+              );
+            },
+            child: const Text('Copy'),
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatQty(double value) {

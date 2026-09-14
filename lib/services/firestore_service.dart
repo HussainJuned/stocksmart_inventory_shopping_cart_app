@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/grocery_item.dart';
 import '../models/category_model.dart';
 import '../models/supplier_model.dart';
+import '../models/storage_type_model.dart';
 import '../models/shopping_list_model.dart';
 
 class FirestoreService {
@@ -106,6 +107,38 @@ class FirestoreService {
         .delete();
   }
 
+  // --- Storage Types ---
+  Stream<List<StorageType>> getStorageTypesStream() {
+    return _db
+        .collection('users')
+        .doc(userId)
+        .collection('storage_types')
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => StorageType.fromMap(doc.data()))
+              .toList(),
+        );
+  }
+
+  Future<void> saveStorageType(StorageType storageType) async {
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('storage_types')
+        .doc(storageType.id)
+        .set(storageType.toMap());
+  }
+
+  Future<void> deleteStorageType(String storageTypeId) async {
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('storage_types')
+        .doc(storageTypeId)
+        .delete();
+  }
+
   // --- Shopping Lists ---
   Stream<List<ShoppingList>> getShoppingListsStream() {
     return _db
@@ -175,6 +208,7 @@ class FirestoreService {
       'grocery_items',
       'categories',
       'suppliers',
+      'storage_types',
       'shopping_lists',
       'cart_items'
     ];
