@@ -102,7 +102,7 @@ The app follows a **Repository Pattern**:
 
 ### **C. Smart Cart System (Refactoring)**
 
-- _(Planned)_: Group by Supplier, Status tracking (Pending/Bought), Single Active List.
+- _(Planned)_: Group by Supplier, and sub category, Status tracking (Pending/Bought), Single Active List.
 - **Current State**: Basic list generation and manual add.
 
 ## 7. User Workflow
