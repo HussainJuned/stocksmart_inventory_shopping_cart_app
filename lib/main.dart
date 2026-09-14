@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -49,7 +48,11 @@ class MyApp extends StatelessWidget {
             return inventory;
           },
         ),
-        ChangeNotifierProxyProvider2<AuthProvider, InventoryProvider, CartProvider>(
+        ChangeNotifierProxyProvider2<
+          AuthProvider,
+          InventoryProvider,
+          CartProvider
+        >(
           create: (context) => CartProvider(
             Provider.of<InventoryProvider>(context, listen: false),
           ),
@@ -62,6 +65,7 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'StockSmart',
+        debugShowCheckedModeBanner: false,
         theme: ThemeData.dark(useMaterial3: true).copyWith(
           colorScheme: ColorScheme.fromSeed(
             seedColor: Colors.deepOrange,

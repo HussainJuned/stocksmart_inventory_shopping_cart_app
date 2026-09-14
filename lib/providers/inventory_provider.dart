@@ -48,7 +48,6 @@ class InventoryProvider extends ChangeNotifier {
 
   Future<void> _init() async {
     _isLoading = true;
-    notifyListeners(); // Might not be needed to notify here if we want silence
     await _repository.init();
     _fetchLocal();
 

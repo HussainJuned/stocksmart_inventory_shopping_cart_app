@@ -17,6 +17,7 @@ class _AddItemModalState extends State<AddItemModal> {
   String _selectedUnit = 'kg';
   List<String> _selectedCategoryIds = [];
   String? _selectedSupplierId;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -36,10 +37,18 @@ class _AddItemModalState extends State<AddItemModal> {
   }
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    _parController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom +
+        bottom:
+            MediaQuery.of(context).viewInsets.bottom +
             MediaQuery.of(context).padding.bottom +
             20,
         top: 20,
@@ -56,9 +65,7 @@ class _AddItemModalState extends State<AddItemModal> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.itemToEdit == null
-                  ? 'Add New Item'
-                  : 'Edit Item',
+              widget.itemToEdit == null ? 'Add New Item' : 'Edit Item',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
@@ -193,10 +200,19 @@ class _AddItemModalState extends State<AddItemModal> {
                   backgroundColor: Colors.deepOrange,
                   foregroundColor: Colors.white,
                 ),
-                onPressed: _save,
-                child: Text(
-                  widget.itemToEdit == null ? 'Save Item' : 'Update Item',
-                ),
+                onPressed: _isSaving ? null : _save,
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        widget.itemToEdit == null ? 'Save Item' : 'Update Item',
+                      ),
               ),
             ),
           ],
@@ -205,39 +221,52 @@ class _AddItemModalState extends State<AddItemModal> {
     );
   }
 
-  void _save() {
-    if (_nameController.text.isEmpty) return;
+  Future<void> _save() async {
+    if (_nameController.text.isEmpty || _isSaving) return;
 
     final inventory = Provider.of<InventoryProvider>(context, listen: false);
 
+    setState(() {
+      _isSaving = true;
+    });
+
     // No fallback needed now. Empty list is valid (Uncategorized).
 
-    if (widget.itemToEdit != null) {
-      // Update existing
-      final updatedItem = widget.itemToEdit!.copyWith(
-        name: _nameController.text,
-        categoryIds: _selectedCategoryIds,
-        unit: _selectedUnit,
-        parLevel: double.tryParse(_parController.text) ?? 0,
-        defaultSupplierId: _selectedSupplierId, // Fixed: Pass supplier
+    try {
+      if (widget.itemToEdit != null) {
+        final updatedItem = widget.itemToEdit!.copyWith(
+          name: _nameController.text.trim(),
+          categoryIds: List<String>.from(_selectedCategoryIds),
+          unit: _selectedUnit,
+          parLevel: double.tryParse(_parController.text) ?? 0,
+          defaultSupplierId: _selectedSupplierId,
+        );
+        await inventory.updateItem(updatedItem);
+      } else {
+        final newItem = GroceryItem.create(
+          name: _nameController.text.trim(),
+          categoryIds: List<String>.from(_selectedCategoryIds),
+          unit: _selectedUnit,
+          parLevel: double.tryParse(_parController.text) ?? 0,
+          defaultSupplierId: _selectedSupplierId,
+        );
+        await inventory.addItem(newItem);
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save item: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
-      inventory.updateItem(updatedItem);
-    } else {
-      final newItem = GroceryItem.create(
-        name: _nameController.text,
-        categoryIds: _selectedCategoryIds,
-        unit: _selectedUnit,
-        parLevel: double.tryParse(_parController.text) ?? 0,
-        defaultSupplierId: _selectedSupplierId, // Fixed: Pass supplier
-      );
-      inventory.addItem(newItem);
+      setState(() {
+        _isSaving = false;
+      });
+      return;
     }
-
-    // This is a placeholder for the logic I'll add in the next step to Provider.
-    // For now, just logging or partial save if I missed the provider method.
-    // Actually, I'll use the existing addItem for creating.
-    // I need to add updateItem to provider.
-
-    Navigator.pop(context);
   }
 }

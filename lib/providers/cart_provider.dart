@@ -154,6 +154,20 @@ class CartProvider extends ChangeNotifier {
     return _listItems[listId] ?? [];
   }
 
+  CartItem? findCartItem(String listId, String inventoryItemId) {
+    final items = _listItems[listId];
+    if (items == null) {
+      return null;
+    }
+
+    for (final item in items) {
+      if (item.itemId == inventoryItemId) {
+        return item;
+      }
+    }
+    return null;
+  }
+
   // Create New Cart (Archives old one)
   Future<void> createNewCart() async {
     // 1. Archive current active cart if exists
@@ -289,6 +303,20 @@ class CartProvider extends ChangeNotifier {
       _firestoreService?.saveCartItem(item);
       notifyListeners();
     }
+  }
+
+  Future<void> restoreCartItemSnapshot(CartItem item) async {
+    final listItems = _listItems.putIfAbsent(item.listId, () => []);
+    final index = listItems.indexWhere((existing) => existing.id == item.id);
+    if (index == -1) {
+      listItems.add(item);
+    } else {
+      listItems[index] = item;
+    }
+
+    await _hiveService.saveCartItem(item);
+    _firestoreService?.saveCartItem(item);
+    notifyListeners();
   }
 
   Future<void> deleteShoppingList(String listId) async {

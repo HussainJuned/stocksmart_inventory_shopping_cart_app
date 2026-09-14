@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
+import '../constants.dart';
 import '../models/shopping_list_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
@@ -183,16 +184,17 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                 visualDensity: VisualDensity.compact,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
+              showSelectedIcon: false,
               segments: const [
                 ButtonSegment(
                   value: _GroupBy.supplier,
                   icon: Icon(Icons.local_shipping_outlined, size: 16),
-                  label: Text('Supplier', style: TextStyle(fontSize: 11)),
+                  tooltip: 'Group by supplier',
                 ),
                 ButtonSegment(
                   value: _GroupBy.category,
                   icon: Icon(Icons.category_outlined, size: 16),
-                  label: Text('Category', style: TextStyle(fontSize: 11)),
+                  tooltip: 'Group by category',
                 ),
               ],
               selected: {_groupBy},
@@ -309,29 +311,57 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                           },
                           onDismissed: (_) {
                             final removed = item;
+                            final messenger = ScaffoldMessenger.of(context);
                             cartProvider.removeItemFromCart(
                               widget.listId,
                               item.id,
                             );
-                            ScaffoldMessenger.of(context)
+                            messenger
                               ..hideCurrentSnackBar()
                               ..showSnackBar(
                                 SnackBar(
-                                  content: Text('${removed.name} removed'),
+                                  content: Row(
+                                    children: [
+                                      InkWell(
+                                        onTap: messenger.hideCurrentSnackBar,
+                                        borderRadius: BorderRadius.circular(99),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(5),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.22,
+                                            ),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.16,
+                                              ),
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.close,
+                                            size: 18,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text('${removed.name} removed'),
+                                      ),
+                                    ],
+                                  ),
                                   action: SnackBarAction(
                                     label: 'Undo',
                                     onPressed: () {
-                                      Provider.of<CartProvider>(
-                                        context,
-                                        listen: false,
-                                      ).restoreCartItem(removed);
+                                      cartProvider.restoreCartItem(removed);
                                     },
                                   ),
-                                  duration: const Duration(seconds: 4),
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
+                                  duration: kSnackBarDuration,
+                                  // Flutter defaults `persist` to true when an
+                                  // action is present, which suppresses the
+                                  // auto-dismiss timer entirely.
+                                  persist: false,
                                 ),
                               );
                           },
@@ -1043,16 +1073,42 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
               onPressed: () {
                 provider.removeItemFromCart(item.listId, item.id);
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${item.name} removed from cart'),
-                    backgroundColor: Colors.redAccent.withOpacity(0.9),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                final messenger = ScaffoldMessenger.of(context);
+                messenger
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          InkWell(
+                            onTap: messenger.hideCurrentSnackBar,
+                            borderRadius: BorderRadius.circular(99),
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.22),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.16),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.close,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text('${item.name} removed from cart'),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: Colors.redAccent.withOpacity(0.9),
+                      duration: kSnackBarDuration,
                     ),
-                  ),
-                );
+                  );
               },
             ),
           ],
@@ -1304,7 +1360,8 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
         SnackBar(
           content: const Text('📋 Shopping list copied to clipboard!'),
           action: SnackBarAction(label: 'OK', onPressed: () {}),
-          duration: const Duration(seconds: 3),
+          duration: kSnackBarDuration,
+          persist: false,
         ),
       );
       showDialog(

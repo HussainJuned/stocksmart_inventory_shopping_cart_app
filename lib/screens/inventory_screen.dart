@@ -21,10 +21,6 @@ class InventoryScreen extends StatefulWidget {
 }
 
 class _InventoryScreenState extends State<InventoryScreen> {
-  bool _isSearching = false;
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-
   void _editRestaurantName(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final currentName = auth.user?.displayName ?? 'StockSmart';
@@ -151,12 +147,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
   void _exportToJson(BuildContext context) {
     final inventory = Provider.of<InventoryProvider>(context, listen: false);
     final jsonString = inventory.exportToJson();
@@ -222,39 +212,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 .length, // Ensure at least 1 for safety if needed, or 0 if supported
       child: Scaffold(
         appBar: AppBar(
-          title: _isSearching
-              ? TextField(
-                  controller: _searchController,
-                  autofocus: true,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    hintText: 'Search items...',
-                    hintStyle: TextStyle(color: Colors.white70),
-                    border: InputBorder.none,
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
-                  },
-                )
-              : Text(
-                  auth.user?.displayName ?? 'StockSmart',
-                  overflow: TextOverflow.ellipsis,
-                ),
-          leading: _isSearching
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () {
-                    setState(() {
-                      _isSearching = false;
-                      _searchQuery = '';
-                      _searchController.clear();
-                    });
-                  },
-                )
-              : null, // Default
-          bottom: (_isSearching || inventory.categories.isEmpty)
+          title: Text(
+            auth.user?.displayName ?? 'StockSmart',
+            overflow: TextOverflow.ellipsis,
+          ),
+          bottom: inventory.categories.isEmpty
               ? null
               : TabBar(
                   isScrollable: true,
@@ -264,37 +226,39 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       .toList(),
                 ),
           actions: [
-            if (_isSearching)
-              IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () {
-                  setState(() {
-                    _searchQuery = '';
-                    _searchController.clear();
-                  });
-                },
-              )
-            else ...[
-              IconButton(
-                icon: const Icon(Icons.search),
-                onPressed: () {
-                  setState(() {
-                    _isSearching = true;
-                  });
-                },
-              ),
-
-              IconButton(
-                icon: const Icon(Icons.list_alt),
-                tooltip: 'Manage Items',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ItemManagerScreen(),
+            ...[
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Center(
+                  child: SizedBox(
+                    height: 36,
+                    child: TextButton.icon(
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.white.withValues(alpha: 0.08),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        minimumSize: Size.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.list_alt, size: 18),
+                      label: const Text(
+                        'Manage Items',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ItemManagerScreen(),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ],
           ],
@@ -575,26 +539,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Widget _buildBody(InventoryProvider inventory) {
-    // 1. Search Mode
-    if (_isSearching) {
-      final searchResults = inventory.items.where((i) {
-        return i.name.toLowerCase().contains(_searchQuery.toLowerCase());
-      }).toList();
-
-      if (searchResults.isEmpty) {
-        return const Center(child: Text('No results found.'));
-      }
-
-      return ListView.builder(
-        padding: const EdgeInsets.only(top: 8, bottom: 80),
-        itemCount: searchResults.length,
-        itemBuilder: (context, index) {
-          return ItemTile(item: searchResults[index]);
-        },
-      );
-    }
-
-    // 2. Empty Categories Mode
+    // 1. Empty Categories Mode
     if (inventory.categories.isEmpty) {
       return Center(
         child: Column(
@@ -618,7 +563,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       );
     }
 
-    // 3. TabBar Mode (Default)
+    // 2. TabBar Mode (Default)
     return TabBarView(
       children: inventory.categories.map((cat) {
         return _CategoryList(categoryId: cat.id, categoryName: cat.name);

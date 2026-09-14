@@ -118,7 +118,6 @@ class CartHistoryScreen extends StatelessWidget {
                         SnackBar(
                           content: const Text('Order history deleted'),
                           backgroundColor: Colors.redAccent,
-                          behavior: SnackBarBehavior.floating,
                         ),
                       );
                     },

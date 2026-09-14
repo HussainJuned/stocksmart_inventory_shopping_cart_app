@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants.dart';
 import '../models/grocery_item.dart';
 import '../providers/cart_provider.dart';
 import '../providers/inventory_provider.dart';
@@ -193,14 +194,82 @@ class _CartSearchModalState extends State<CartSearchModal> {
                           ? 'Add More'
                           : '${quantityToAdd.toStringAsFixed(0)} ${item.unit}',
                     ),
-                    onPressed: () {
-                      cartProvider.addItemToCart(item.id, quantityToAdd);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Added ${item.name}'),
-                          duration: const Duration(milliseconds: 500),
-                        ),
-                      );
+                    onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      final activeCart = cartProvider.activeCart;
+                      final existingItem = activeCart != null
+                          ? cartProvider.findCartItem(activeCart.id, item.id)
+                          : null;
+                      await cartProvider.addItemToCart(item.id, quantityToAdd);
+                      if (!context.mounted) return;
+                      messenger
+                        ..hideCurrentSnackBar()
+                        ..showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                InkWell(
+                                  onTap: messenger.hideCurrentSnackBar,
+                                  borderRadius: BorderRadius.circular(99),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(5),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.22,
+                                      ),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.16,
+                                        ),
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.close,
+                                      size: 18,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    existingItem == null
+                                        ? '${item.name} added to cart'
+                                        : '${item.name} quantity updated',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            duration: kSnackBarDuration,
+                            persist: false,
+                            action: SnackBarAction(
+                              label: 'Undo',
+                              onPressed: () {
+                                if (existingItem == null) {
+                                  final activeCartAfterAdd =
+                                      cartProvider.activeCart;
+                                  final addedItem = activeCartAfterAdd != null
+                                      ? cartProvider.findCartItem(
+                                          activeCartAfterAdd.id,
+                                          item.id,
+                                        )
+                                      : null;
+                                  if (addedItem != null) {
+                                    cartProvider.removeItemFromCart(
+                                      addedItem.listId,
+                                      addedItem.id,
+                                    );
+                                  }
+                                } else {
+                                  cartProvider.restoreCartItemSnapshot(
+                                    existingItem,
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        );
                     },
                   ),
                 );

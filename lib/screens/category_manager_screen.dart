@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/category_model.dart';
+import '../models/grocery_item.dart';
 import '../providers/inventory_provider.dart';
+import 'item_manager_screen.dart';
 
 class CategoryManagerScreen extends StatelessWidget {
   const CategoryManagerScreen({super.key});
@@ -28,9 +30,25 @@ class CategoryManagerScreen extends StatelessWidget {
                 },
                 itemBuilder: (context, index) {
                   final category = categories[index];
+                  final linkedItems = inventory.items
+                      .where((item) => item.categoryIds.contains(category.id))
+                      .toList();
                   return ListTile(
                     key: ValueKey(category.id),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ItemManagerScreen(
+                          categoryId: category.id,
+                          title: category.name,
+                        ),
+                      ),
+                    ),
                     title: Text(category.name),
+                    subtitle: Text(
+                      _buildLinkedItemsSummary(linkedItems),
+                      style: TextStyle(color: Colors.grey[400]),
+                    ),
                     leading: const Icon(Icons.drag_handle),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -55,11 +73,34 @@ class CategoryManagerScreen extends StatelessWidget {
                 },
               ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddDialog(context),
-        child: const Icon(Icons.add),
+        backgroundColor: Colors.deepOrange,
+        foregroundColor: Colors.white,
+        elevation: 6,
+        icon: const Icon(Icons.add_circle_outline),
+        label: const Text(
+          'New Category',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
       ),
     );
+  }
+
+  String _buildLinkedItemsSummary(List<GroceryItem> linkedItems) {
+    if (linkedItems.isEmpty) {
+      return 'No items assigned';
+    }
+
+    final previewNames = linkedItems
+        .take(3)
+        .map((item) => item.name)
+        .join(', ');
+    final remaining = linkedItems.length - 3;
+    if (remaining > 0) {
+      return '${linkedItems.length} items: $previewNames +$remaining more';
+    }
+    return '${linkedItems.length} items: $previewNames';
   }
 
   void _showAddDialog(BuildContext context) {

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/grocery_item.dart';
 import '../providers/inventory_provider.dart';
 import '../models/supplier_model.dart';
+import 'item_manager_screen.dart';
 
 class SupplierManagerScreen extends StatelessWidget {
   const SupplierManagerScreen({super.key});
@@ -19,52 +21,94 @@ class SupplierManagerScreen extends StatelessWidget {
         child: suppliers.isEmpty
             ? const Center(child: Text('No suppliers added yet.'))
             : ListView.builder(
-              itemCount: suppliers.length,
-              itemBuilder: (ctx, i) {
-                final supplier = suppliers[i];
-                return ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.white10,
-                    child: Icon(Icons.local_shipping, color: Colors.orange),
-                  ),
-                  title: Text(
-                    supplier.name,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.orange),
-                        onPressed: () {
-                          _showEditSupplierDialog(context, inventory, supplier);
-                        },
+                itemCount: suppliers.length,
+                itemBuilder: (ctx, i) {
+                  final supplier = suppliers[i];
+                  final linkedItems = inventory.items
+                      .where((item) => item.defaultSupplierId == supplier.id)
+                      .toList();
+                  return ListTile(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ItemManagerScreen(
+                          supplierId: supplier.id,
+                          title: supplier.name,
+                        ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                          _confirmDelete(
-                            context,
-                            inventory,
-                            supplier.id,
-                            supplier.name,
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    ),
+                    leading: const CircleAvatar(
+                      backgroundColor: Colors.white10,
+                      child: Icon(Icons.local_shipping, color: Colors.orange),
+                    ),
+                    title: Text(
+                      supplier.name,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      _buildLinkedItemsSummary(linkedItems),
+                      style: TextStyle(color: Colors.grey[400]),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.orange),
+                          onPressed: () {
+                            _showEditSupplierDialog(
+                              context,
+                              inventory,
+                              supplier,
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () {
+                            _confirmDelete(
+                              context,
+                              inventory,
+                              supplier.id,
+                              supplier.name,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.orange,
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: Colors.deepOrange,
+        foregroundColor: Colors.white,
+        elevation: 6,
+        icon: const Icon(Icons.add_circle_outline),
+        label: const Text(
+          'New Supplier',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         onPressed: () {
           _showAddSupplierDialog(context, inventory);
         },
       ),
     );
+  }
+
+  String _buildLinkedItemsSummary(List<GroceryItem> linkedItems) {
+    if (linkedItems.isEmpty) {
+      return 'No items assigned';
+    }
+
+    final previewNames = linkedItems
+        .take(3)
+        .map((item) => item.name)
+        .join(', ');
+    final remaining = linkedItems.length - 3;
+    if (remaining > 0) {
+      return '${linkedItems.length} items: $previewNames +$remaining more';
+    }
+    return '${linkedItems.length} items: $previewNames';
   }
 
   void _showAddSupplierDialog(

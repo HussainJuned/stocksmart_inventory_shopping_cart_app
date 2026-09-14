@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants.dart';
 import '../models/grocery_item.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/cart_provider.dart';
@@ -143,7 +144,7 @@ class ItemTile extends StatelessWidget {
                         }
 
                         return GestureDetector(
-                          onTap: () {
+                          onTap: () async {
                             final settings = Provider.of<SettingsProvider>(
                               context,
                               listen: false,
@@ -151,11 +152,43 @@ class ItemTile extends StatelessWidget {
                             if (settings.showQuantityPopup) {
                               _showAddToCartDialog(context, cart, item);
                             } else {
-                              cart.addItemToCart(item.id, 1.0);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('${item.name} added to cart'),
-                                  duration: const Duration(seconds: 1),
+                              final messenger = ScaffoldMessenger.of(context);
+                              final activeCart = cart.activeCart;
+                              final existingItem = activeCart != null
+                                  ? cart.findCartItem(activeCart.id, item.id)
+                                  : null;
+                              await cart.addItemToCart(item.id, 1.0);
+                              if (!context.mounted) return;
+                              _showCartSnackBar(
+                                messenger,
+                                existingItem == null
+                                    ? '${item.name} added to cart'
+                                    : '${item.name} quantity updated',
+                                action: SnackBarAction(
+                                  label: 'Undo',
+                                  onPressed: () {
+                                    if (existingItem == null) {
+                                      final activeCartAfterAdd =
+                                          cart.activeCart;
+                                      final addedItem =
+                                          activeCartAfterAdd != null
+                                          ? cart.findCartItem(
+                                              activeCartAfterAdd.id,
+                                              item.id,
+                                            )
+                                          : null;
+                                      if (addedItem != null) {
+                                        cart.removeItemFromCart(
+                                          addedItem.listId,
+                                          addedItem.id,
+                                        );
+                                      }
+                                    } else {
+                                      cart.restoreCartItemSnapshot(
+                                        existingItem,
+                                      );
+                                    }
+                                  },
                                 ),
                               );
                             }
@@ -224,6 +257,8 @@ class ItemTile extends StatelessWidget {
     CartProvider cart,
     GroceryItem item,
   ) {
+    final parentContext = context;
+    final messenger = ScaffoldMessenger.of(context);
     final controller = TextEditingController(text: '1.0');
 
     showDialog(
@@ -286,17 +321,42 @@ class ItemTile extends StatelessWidget {
                 child: const Text('Cancel'),
               ),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   final qty = double.tryParse(controller.text);
                   if (qty != null && qty > 0) {
-                    cart.addItemToCart(item.id, qty);
+                    final activeCart = cart.activeCart;
+                    final existingItem = activeCart != null
+                        ? cart.findCartItem(activeCart.id, item.id)
+                        : null;
+                    await cart.addItemToCart(item.id, qty);
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          '${item.name} added/updated: ${qty} ${item.unit}',
-                        ),
-                        duration: const Duration(seconds: 1),
+                    if (!parentContext.mounted) return;
+                    _showCartSnackBar(
+                      messenger,
+                      existingItem == null
+                          ? '${item.name} added: $qty ${item.unit}'
+                          : '${item.name} updated: +$qty ${item.unit}',
+                      action: SnackBarAction(
+                        label: 'Undo',
+                        onPressed: () {
+                          if (existingItem == null) {
+                            final activeCartAfterAdd = cart.activeCart;
+                            final addedItem = activeCartAfterAdd != null
+                                ? cart.findCartItem(
+                                    activeCartAfterAdd.id,
+                                    item.id,
+                                  )
+                                : null;
+                            if (addedItem != null) {
+                              cart.removeItemFromCart(
+                                addedItem.listId,
+                                addedItem.id,
+                              );
+                            }
+                          } else {
+                            cart.restoreCartItemSnapshot(existingItem);
+                          }
+                        },
                       ),
                     );
                   }
@@ -320,6 +380,45 @@ class ItemTile extends StatelessWidget {
     InventoryProvider inventory,
   ) {
     return _QuantityInput(item: item, inventory: inventory);
+  }
+
+  void _showCartSnackBar(
+    ScaffoldMessengerState messenger,
+    String message, {
+    SnackBarAction? action,
+  }) {
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              InkWell(
+                onTap: messenger.hideCurrentSnackBar,
+                borderRadius: BorderRadius.circular(99),
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.22),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.16),
+                    ),
+                  ),
+                  child: const Icon(Icons.close, size: 18, color: Colors.white),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text(message)),
+            ],
+          ),
+          duration: kSnackBarDuration,
+          // Flutter defaults `persist` to true when an action is present,
+          // which suppresses the auto-dismiss timer entirely.
+          persist: false,
+          action: action,
+        ),
+      );
   }
 }
 
