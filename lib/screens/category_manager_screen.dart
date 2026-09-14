@@ -21,6 +21,7 @@ class CategoryManagerScreen extends StatelessWidget {
             ? const Center(child: Text('No categories yet.'))
             : ReorderableListView.builder(
                 padding: const EdgeInsets.only(bottom: 80),
+                buildDefaultDragHandles: false,
                 itemCount: categories.length,
                 onReorder: (oldIndex, newIndex) {
                   Provider.of<InventoryProvider>(
@@ -49,7 +50,16 @@ class CategoryManagerScreen extends StatelessWidget {
                       _buildLinkedItemsSummary(linkedItems),
                       style: TextStyle(color: Colors.grey[400]),
                     ),
-                    leading: const Icon(Icons.drag_handle),
+                    leading: ReorderableDragStartListener(
+                      index: index,
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 12,
+                        ),
+                        child: Icon(Icons.drag_indicator),
+                      ),
+                    ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
