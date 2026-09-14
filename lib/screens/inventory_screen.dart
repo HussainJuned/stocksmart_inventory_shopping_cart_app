@@ -188,6 +188,51 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
+  Widget _drawerSectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.1,
+          color: Colors.grey[500],
+        ),
+      ),
+    );
+  }
+
+  Widget _drawerTile({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required VoidCallback onTap,
+    String? subtitle,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+      minVerticalPadding: 14,
+      leading: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: iconColor.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, color: iconColor, size: 22),
+      ),
+      title: Text(
+        label,
+        style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600),
+      ),
+      subtitle: subtitle == null
+          ? null
+          : Text(subtitle, style: const TextStyle(fontSize: 11)),
+      onTap: onTap,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final inventory = Provider.of<InventoryProvider>(context);
@@ -265,21 +310,37 @@ class _InventoryScreenState extends State<InventoryScreen> {
         ),
         body: SafeArea(top: false, child: _buildBody(inventory)),
         drawer: Drawer(
+          backgroundColor: const Color(0xFF161616),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DrawerHeader(
-                decoration: const BoxDecoration(color: Colors.deepOrange),
+                margin: EdgeInsets.zero,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.orangeAccent, Colors.deepOrange],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    const Icon(
-                      Icons.ramen_dining,
-                      size: 48,
-                      color: Colors.white,
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.ramen_dining,
+                        size: 30,
+                        color: Colors.white,
+                      ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     Row(
                       children: [
                         Expanded(
@@ -287,14 +348,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             auth.user?.displayName ?? 'StockSmart',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 20,
+                              fontSize: 21,
                               fontWeight: FontWeight.bold,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.white),
+                          icon: const Icon(
+                            Icons.edit,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                           onPressed: () {
                             Navigator.pop(context); // Close drawer
                             _editRestaurantName(context);
@@ -308,11 +373,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
               ),
               Expanded(
                 child: ListView(
-                  padding: EdgeInsets.zero,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   children: [
-                    ListTile(
-                      leading: const Icon(Icons.edit_note),
-                      title: const Text('Manage Categories'),
+                    _drawerSectionLabel('Menu'),
+                    _drawerTile(
+                      icon: Icons.edit_note,
+                      iconColor: Colors.blueAccent,
+                      label: 'Manage Categories',
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.push(
@@ -323,22 +390,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         );
                       },
                     ),
-                    ListTile(
-                      leading: const Icon(Icons.history),
-                      title: const Text('Order History'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const CartHistoryScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.local_shipping),
-                      title: const Text('Manage Suppliers'),
+                    _drawerTile(
+                      icon: Icons.local_shipping,
+                      iconColor: Colors.teal,
+                      label: 'Manage Suppliers',
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.push(
@@ -349,7 +404,92 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         );
                       },
                     ),
-                    const Divider(),
+                    _drawerTile(
+                      icon: Icons.list_alt,
+                      iconColor: Colors.deepOrange,
+                      label: 'Manage Items',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ItemManagerScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _drawerTile(
+                      icon: Icons.history,
+                      iconColor: Colors.purpleAccent,
+                      label: 'Order History',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const CartHistoryScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Divider(height: 24),
+                    ),
+                    ExpansionTile(
+                      leading: const Icon(Icons.backup_outlined),
+                      title: const Text('Data Backup'),
+                      children: [
+                        ListTile(
+                          contentPadding: const EdgeInsets.only(
+                            left: 32,
+                            right: 16,
+                          ),
+                          leading: const Icon(
+                            Icons.download_rounded,
+                            size: 20,
+                            color: Colors.lightBlue,
+                          ),
+                          title: const Text(
+                            'Import from JSON',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          dense: true,
+                          onTap: () {
+                            Navigator.pop(context); // Close Drawer
+                            _showImportDialog(context);
+                          },
+                        ),
+                        ListTile(
+                          contentPadding: const EdgeInsets.only(
+                            left: 32,
+                            right: 16,
+                          ),
+                          leading: const Icon(
+                            Icons.upload_rounded,
+                            size: 20,
+                            color: Colors.green,
+                          ),
+                          title: const Text(
+                            'Export to JSON',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          subtitle: const Text(
+                            'Backup all items, categories & suppliers',
+                            style: TextStyle(fontSize: 11),
+                          ),
+                          dense: true,
+                          onTap: () {
+                            Navigator.pop(context);
+                            _exportToJson(context);
+                          },
+                        ),
+                      ],
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Divider(height: 24),
+                    ),
                     ExpansionTile(
                       leading: const Icon(Icons.settings),
                       title: const Text('Settings'),
@@ -397,28 +537,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                               alpha: 0.4,
                             ),
                           ),
-                        ),
-                        ListTile(
-                          contentPadding: const EdgeInsets.only(left: 32),
-                          leading: const Icon(Icons.download),
-                          title: const Text('Import from JSON'),
-                          onTap: () {
-                            Navigator.pop(context); // Close Drawer
-                            _showImportDialog(context);
-                          },
-                        ),
-                        ListTile(
-                          contentPadding: const EdgeInsets.only(left: 32),
-                          leading: const Icon(Icons.upload),
-                          title: const Text('Export to JSON'),
-                          subtitle: const Text(
-                            'Backup all items, categories & suppliers',
-                            style: TextStyle(fontSize: 11),
-                          ),
-                          onTap: () {
-                            Navigator.pop(context);
-                            _exportToJson(context);
-                          },
                         ),
                         /* ListTile(
                           contentPadding: const EdgeInsets.only(left: 32),
