@@ -143,7 +143,10 @@ class InventoryProvider extends ChangeNotifier {
   Future<void> updateItemQuantity(String id, double newQty) async {
     final index = _items.indexWhere((i) => i.id == id);
     if (index != -1) {
-      final item = _items[index].copyWith(currentQuantity: newQty);
+      final item = _items[index].copyWith(
+        currentQuantity: newQty,
+        lastUpdated: DateTime.now(),
+      );
       await _repository.updateItem(item);
       _fetchLocal();
 
@@ -152,7 +155,7 @@ class InventoryProvider extends ChangeNotifier {
   }
 
   Future<void> updateItem(GroceryItem item) async {
-    await _repository.updateItem(item);
+    await _repository.updateItem(item.copyWith(lastUpdated: DateTime.now()));
     _fetchLocal();
   }
 

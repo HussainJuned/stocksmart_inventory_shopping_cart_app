@@ -12,6 +12,8 @@ import '../widgets/add_item_modal.dart';
 
 const int _itemSearchPageSize = 200;
 
+enum _SortBy { defaultOrder, nameAsc, stockLow, lastModified }
+
 class ItemManagerScreen extends StatefulWidget {
   final String? categoryId;
   final String? supplierId;
@@ -48,6 +50,7 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
   bool _isPreparingList = true;
   bool _scopeSyncScheduled = false;
   bool _isModalOpen = false;
+  _SortBy _sortBy = _SortBy.defaultOrder;
 
   @override
   void initState() {
@@ -88,7 +91,24 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
     };
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title ?? 'Manage Items')),
+      appBar: AppBar(
+        title: Text(widget.title ?? 'Manage Items'),
+        actions: [
+          PopupMenuButton<_SortBy>(
+            tooltip: 'Sort by',
+            icon: const Icon(Icons.sort),
+            onSelected: _changeSortBy,
+            itemBuilder: (context) => [
+              for (final sortBy in _SortBy.values)
+                CheckedPopupMenuItem<_SortBy>(
+                  value: sortBy,
+                  checked: _sortBy == sortBy,
+                  child: Text(_sortByLabel(sortBy)),
+                ),
+            ],
+          ),
+        ],
+      ),
       body: SafeArea(
         top: false,
         child: Column(
@@ -581,6 +601,7 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
       return;
     }
 
+    _sortItemsInPlace(scopedItems);
     _cachedInventoryItems = sourceItems;
     _scopedItems = List<GroceryItem>.unmodifiable(scopedItems);
     _itemById = const {};
@@ -610,6 +631,49 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
         return;
       }
       _applySearch(_appliedSearchQuery);
+    });
+  }
+
+  String _sortByLabel(_SortBy sortBy) => switch (sortBy) {
+    _SortBy.defaultOrder => 'Default order',
+    _SortBy.nameAsc => 'Name (A–Z)',
+    _SortBy.stockLow => 'Stock level (lowest first)',
+    _SortBy.lastModified => 'Last modified (newest first)',
+  };
+
+  void _sortItemsInPlace(List<GroceryItem> items) {
+    switch (_sortBy) {
+      case _SortBy.defaultOrder:
+        return;
+      case _SortBy.nameAsc:
+        items.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
+        return;
+      case _SortBy.stockLow:
+        items.sort(
+          (a, b) => (a.currentQuantity - a.parLevel).compareTo(
+            b.currentQuantity - b.parLevel,
+          ),
+        );
+        return;
+      case _SortBy.lastModified:
+        items.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+        return;
+    }
+  }
+
+  void _changeSortBy(_SortBy sortBy) {
+    if (_sortBy == sortBy) return;
+    setState(() {
+      _sortBy = sortBy;
+      final scoped = List<GroceryItem>.from(_scopedItems);
+      _sortItemsInPlace(scoped);
+      _scopedItems = List<GroceryItem>.unmodifiable(scoped);
+
+      final visible = List<GroceryItem>.from(_visibleItems);
+      _sortItemsInPlace(visible);
+      _visibleItems = List<GroceryItem>.unmodifiable(visible);
     });
   }
 
@@ -678,6 +742,7 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
       }
     }
 
+    _sortItemsInPlace(nextItems);
     setState(() {
       _appliedSearchQuery = normalizedQuery;
       _visibleItems = List<GroceryItem>.unmodifiable(nextItems);
