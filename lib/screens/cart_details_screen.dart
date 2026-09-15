@@ -399,6 +399,8 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                       final item = entry as CartItem;
                       final isBought = item.state == CartItemState.bought;
                       final isSkipped = item.state == CartItemState.skipped;
+                      final isUnavailable =
+                          item.state == CartItemState.unavailable;
                       final toggleBoughtState = isArchived
                           ? null
                           : () {
@@ -513,6 +515,16 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: toggleBoughtState,
+                          onLongPress: isArchived
+                              ? null
+                              : () {
+                                  HapticFeedback.mediumImpact();
+                                  _showItemStatePicker(
+                                    context,
+                                    cartProvider,
+                                    item,
+                                  );
+                                },
                           child: Container(
                           decoration: BoxDecoration(
                             color: const Color(0xFF1E1E1E),
@@ -538,20 +550,30 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                           border: Border.all(
                                             color: isBought
                                                 ? Colors.green
+                                                : isUnavailable
+                                                ? Colors.redAccent
                                                 : Colors.white24,
                                             width: 2,
                                           ),
                                           color: isBought
                                               ? Colors.green.withOpacity(0.1)
+                                              : isUnavailable
+                                              ? Colors.redAccent.withOpacity(
+                                                  0.1,
+                                                )
                                               : Colors.transparent,
                                         ),
                                         child: Icon(
                                           isBought
                                               ? Icons.check
+                                              : isUnavailable
+                                              ? Icons.block
                                               : Icons.circle_outlined,
                                           size: 24,
                                           color: isBought
                                               ? Colors.green
+                                              : isUnavailable
+                                              ? Colors.redAccent
                                               : Colors.white24,
                                         ),
                                       ),
@@ -568,11 +590,16 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                             style: TextStyle(
                                               fontSize: 15,
                                               fontWeight: FontWeight.bold,
-                                              color: isBought || isSkipped
+                                              color:
+                                                  isBought ||
+                                                      isSkipped ||
+                                                      isUnavailable
                                                   ? Colors.white38
                                                   : Colors.white,
                                               decoration:
-                                                  (isBought || isSkipped)
+                                                  (isBought ||
+                                                      isSkipped ||
+                                                      isUnavailable)
                                                   ? TextDecoration.lineThrough
                                                   : null,
                                             ),
@@ -619,7 +646,10 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                       context,
                                       cartProvider,
                                       item,
-                                      enabled: !isArchived,
+                                      enabled:
+                                          !isArchived &&
+                                          item.state ==
+                                              CartItemState.pending,
                                     ),
                                   ],
                                 ),
@@ -654,37 +684,8 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                 if (!isArchived) ...[
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Start New Order?'),
-                            content: const Text(
-                              'This will archive the current order and create a fresh one based on current stock levels.',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                child: const Text('Cancel'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  cartProvider.createNewCart();
-                                  Navigator.pop(context);
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white.withOpacity(
-                                    0.05,
-                                  ),
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: const Text('Start New'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+                      onTap: () =>
+                          _confirmArchiveAndStartNew(context, cartProvider, items),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
@@ -1051,6 +1052,184 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
   }
 
   // ── Cart stepper ────────────────────────────────────────────────────────────
+  void _confirmArchiveAndStartNew(
+    BuildContext context,
+    CartProvider cartProvider,
+    List<CartItem> items,
+  ) {
+    final pendingCount = items
+        .where((i) => i.state == CartItemState.pending)
+        .length;
+
+    if (pendingCount == 0) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Start New Order?'),
+          content: const Text(
+            'This will archive the current order and create a fresh one based on current stock levels.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                cartProvider.createNewCart();
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white.withOpacity(0.05),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Start New'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // Some items were never checked off — ask what to do with them instead
+    // of silently leaving them pending forever in the archived order.
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('$pendingCount item${pendingCount == 1 ? '' : 's'} not checked off'),
+        content: const Text(
+          'What should happen to the items nobody marked bought or unavailable?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              cartProvider.createNewCart();
+              Navigator.pop(context);
+            },
+            child: const Text('Leave as Pending'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await cartProvider.markAllPendingAs(
+                widget.listId,
+                CartItemState.unavailable,
+              );
+              cartProvider.createNewCart();
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('Mark Unavailable'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await cartProvider.markAllPendingAs(
+                widget.listId,
+                CartItemState.bought,
+              );
+              cartProvider.createNewCart();
+              if (context.mounted) Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepOrange,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Mark All Bought'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showItemStatePicker(
+    BuildContext context,
+    CartProvider cartProvider,
+    CartItem item,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1C1C1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        Widget option({
+          required CartItemState state,
+          required IconData icon,
+          required Color color,
+          required String label,
+        }) {
+          final selected = item.state == state;
+          return ListTile(
+            leading: Icon(icon, color: color),
+            title: Text(
+              label,
+              style: TextStyle(
+                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                color: selected ? Colors.white : Colors.white70,
+              ),
+            ),
+            trailing: selected
+                ? const Icon(Icons.check, color: Colors.deepOrange)
+                : null,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              cartProvider.updateItemState(widget.listId, item.id, state);
+              Navigator.pop(ctx);
+            },
+          );
+        }
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: Text(
+                    item.name,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                option(
+                  state: CartItemState.pending,
+                  icon: Icons.circle_outlined,
+                  color: Colors.white24,
+                  label: 'Pending',
+                ),
+                option(
+                  state: CartItemState.bought,
+                  icon: Icons.check_circle,
+                  color: Colors.green,
+                  label: 'Bought',
+                ),
+                option(
+                  state: CartItemState.unavailable,
+                  icon: Icons.block,
+                  color: Colors.redAccent,
+                  label: 'Unavailable',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildCartStepper(
     BuildContext context,
     CartProvider provider,

@@ -262,11 +262,55 @@ class CartProvider extends ChangeNotifier {
     if (items != null) {
       final index = items.indexWhere((i) => i.id == itemId);
       if (index != -1) {
-        items[index] = items[index].copyWith(state: newState);
+        final cartItem = items[index];
+        if (cartItem.state != newState) {
+          _applyStockDelta(cartItem, cartItem.state, newState);
+        }
+        items[index] = cartItem.copyWith(state: newState);
         await _hiveService.saveCartItem(items[index]);
         _firestoreService?.saveCartItem(items[index]);
         notifyListeners();
       }
+    }
+  }
+
+  // Adds/removes the cart item's quantity from the matching GroceryItem's
+  // stock whenever its state crosses into or out of "bought" — bought means
+  // it was actually picked up, so stock should reflect that; any other
+  // state (pending, skipped, unavailable) has no stock effect.
+  void _applyStockDelta(
+    CartItem cartItem,
+    CartItemState oldState,
+    CartItemState newState,
+  ) {
+    final wasBought = oldState == CartItemState.bought;
+    final isBought = newState == CartItemState.bought;
+    if (wasBought == isBought) return;
+
+    final delta = isBought
+        ? cartItem.quantityNeeded
+        : -cartItem.quantityNeeded;
+    try {
+      final inventoryItem = _inventory.items.firstWhere(
+        (i) => i.id == cartItem.itemId,
+      );
+      _inventory.updateItemQuantity(
+        inventoryItem.id,
+        inventoryItem.currentQuantity + delta,
+      );
+    } catch (_) {
+      // Item may have been deleted from inventory since being added to cart.
+    }
+  }
+
+  /// Sets every still-[CartItemState.pending] item in [listId] to
+  /// [newState] in one go — used when archiving an order with items nobody
+  /// got around to checking off individually.
+  Future<void> markAllPendingAs(String listId, CartItemState newState) async {
+    final items = _listItems[listId];
+    if (items == null) return;
+    for (final item in items.where((i) => i.state == CartItemState.pending)) {
+      updateItemState(listId, item.id, newState);
     }
   }
 
