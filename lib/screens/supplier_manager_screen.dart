@@ -17,100 +17,126 @@ class SupplierManagerScreen extends StatelessWidget {
         .where((item) => item.defaultSupplierId == null)
         .toList();
     final showUnassigned = unassignedItems.isNotEmpty;
-    final rowCount = suppliers.length + (showUnassigned ? 1 : 0);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Manage Suppliers')),
       body: SafeArea(
         top: false,
-        child: rowCount == 0
+        child: suppliers.isEmpty && !showUnassigned
             ? const Center(child: Text('No suppliers added yet.'))
-            : ListView.builder(
-                itemCount: rowCount,
-                itemBuilder: (ctx, i) {
-                  if (showUnassigned && i == suppliers.length) {
-                    return ListTile(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ItemManagerScreen(
-                            unassignedSupplierOnly: true,
-                            title: 'Unassigned',
+            : SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 96),
+                child: Column(
+                  children: [
+                    if (suppliers.isNotEmpty)
+                      ReorderableListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        buildDefaultDragHandles: false,
+                        itemCount: suppliers.length,
+                        onReorder: (oldIndex, newIndex) {
+                          Provider.of<InventoryProvider>(
+                            context,
+                            listen: false,
+                          ).reorderSupplier(oldIndex, newIndex);
+                        },
+                        itemBuilder: (ctx, i) {
+                          final supplier = suppliers[i];
+                          final linkedItems = inventory.items
+                              .where(
+                                (item) =>
+                                    item.defaultSupplierId == supplier.id,
+                              )
+                              .toList();
+                          return ListTile(
+                            key: ValueKey(supplier.id),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ItemManagerScreen(
+                                  supplierId: supplier.id,
+                                  title: supplier.name,
+                                ),
+                              ),
+                            ),
+                            leading: ReorderableDragStartListener(
+                              index: i,
+                              child: const Icon(Icons.drag_indicator),
+                            ),
+                            title: Text(
+                              supplier.name,
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            subtitle: Text(
+                              _buildLinkedItemsSummary(linkedItems),
+                              style: TextStyle(color: Colors.grey[400]),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit,
+                                    color: Colors.orange,
+                                  ),
+                                  onPressed: () {
+                                    _showEditSupplierDialog(
+                                      context,
+                                      inventory,
+                                      supplier,
+                                    );
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () {
+                                    _confirmDelete(
+                                      context,
+                                      inventory,
+                                      supplier.id,
+                                      supplier.name,
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    if (showUnassigned) ...[
+                      const Divider(height: 1),
+                      ListTile(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ItemManagerScreen(
+                              unassignedSupplierOnly: true,
+                              title: 'Unassigned',
+                            ),
                           ),
                         ),
-                      ),
-                      leading: const CircleAvatar(
-                        backgroundColor: Colors.white10,
-                        child: Icon(
-                          Icons.local_shipping_outlined,
-                          color: Colors.grey,
+                        leading: const CircleAvatar(
+                          backgroundColor: Colors.white10,
+                          child: Icon(
+                            Icons.local_shipping_outlined,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        title: const Text(
+                          'Unassigned',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        subtitle: Text(
+                          _buildLinkedItemsSummary(unassignedItems),
+                          style: TextStyle(color: Colors.grey[400]),
                         ),
                       ),
-                      title: const Text(
-                        'Unassigned',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      subtitle: Text(
-                        _buildLinkedItemsSummary(unassignedItems),
-                        style: TextStyle(color: Colors.grey[400]),
-                      ),
-                    );
-                  }
-
-                  final supplier = suppliers[i];
-                  final linkedItems = inventory.items
-                      .where((item) => item.defaultSupplierId == supplier.id)
-                      .toList();
-                  return ListTile(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ItemManagerScreen(
-                          supplierId: supplier.id,
-                          title: supplier.name,
-                        ),
-                      ),
-                    ),
-                    leading: const CircleAvatar(
-                      backgroundColor: Colors.white10,
-                      child: Icon(Icons.local_shipping, color: Colors.orange),
-                    ),
-                    title: Text(
-                      supplier.name,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    subtitle: Text(
-                      _buildLinkedItemsSummary(linkedItems),
-                      style: TextStyle(color: Colors.grey[400]),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.orange),
-                          onPressed: () {
-                            _showEditSupplierDialog(
-                              context,
-                              inventory,
-                              supplier,
-                            );
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () {
-                            _confirmDelete(
-                              context,
-                              inventory,
-                              supplier.id,
-                              supplier.name,
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                    ],
+                  ],
+                ),
               ),
       ),
       floatingActionButton: FloatingActionButton.extended(

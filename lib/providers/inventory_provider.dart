@@ -113,6 +113,13 @@ class InventoryProvider extends ChangeNotifier {
 
     _suppliers.clear();
     _suppliers.addAll(_repository.getSuppliers());
+    // Pre-sortOrder records all default to 0 — tie-break by name so first
+    // load is deterministic (alphabetical) instead of arbitrary Hive order.
+    _suppliers.sort((a, b) {
+      int cmp = a.sortOrder.compareTo(b.sortOrder);
+      if (cmp == 0) return a.name.compareTo(b.name);
+      return cmp;
+    });
 
     _storageTypes.clear();
     _storageTypes.addAll(_repository.getStorageTypes());
@@ -294,9 +301,38 @@ class InventoryProvider extends ChangeNotifier {
   }
 
   Future<void> addSupplier(String name) async {
-    final newSupplier = Supplier.create(name: name);
+    final newSupplier = Supplier.create(
+      name: name,
+      sortOrder: _suppliers.length,
+    );
     await _repository.addSupplier(newSupplier);
     _fetchLocal();
+  }
+
+  Future<void> reorderSupplier(int oldIndex, int newIndex) async {
+    // ReorderableListView reports newIndex after removal, so adjust
+    if (oldIndex < newIndex) newIndex -= 1;
+    if (oldIndex == newIndex) return;
+
+    final reordered = List<Supplier>.from(_suppliers);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+
+    // Re-assign sequential sortOrder values
+    for (int i = 0; i < reordered.length; i++) {
+      final supplier = reordered[i];
+      if (supplier.sortOrder != i) {
+        final updated = supplier.copyWith(sortOrder: i);
+        reordered[i] = updated;
+        _repository.updateSupplier(updated);
+      }
+    }
+
+    _suppliers
+      ..clear()
+      ..addAll(reordered);
+
+    notifyListeners();
   }
 
   Future<void> updateSupplier(Supplier supplier) async {
