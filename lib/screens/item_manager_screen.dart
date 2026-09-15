@@ -320,7 +320,7 @@ class _ItemManagerScreenState extends State<ItemManagerScreen> {
                                             return IconButton(
                                               icon: Icon(
                                                 isInCart
-                                                    ? Icons.check_circle
+                                                    ? Icons.shopping_cart
                                                     : Icons.add_shopping_cart,
                                                 color: isInCart
                                                     ? Colors.green

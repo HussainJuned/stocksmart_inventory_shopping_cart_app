@@ -148,6 +148,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
+  void _copyJsonToClipboard(BuildContext context) {
+    final inventory = Provider.of<InventoryProvider>(context, listen: false);
+    final jsonString = inventory.exportToJson();
+    Clipboard.setData(ClipboardData(text: jsonString));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('JSON copied to clipboard!'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
   void _exportToJson(BuildContext context) {
     final inventory = Provider.of<InventoryProvider>(context, listen: false);
     final jsonString = inventory.exportToJson();
@@ -504,6 +516,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           onTap: () {
                             Navigator.pop(context);
                             _exportToJson(context);
+                          },
+                        ),
+                        ListTile(
+                          contentPadding: const EdgeInsets.only(
+                            left: 32,
+                            right: 16,
+                          ),
+                          leading: const Icon(
+                            Icons.content_copy_outlined,
+                            size: 20,
+                            color: Colors.amber,
+                          ),
+                          title: const Text(
+                            'Copy as Text',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          subtitle: const Text(
+                            'Copy the backup JSON to your clipboard',
+                            style: TextStyle(fontSize: 11),
+                          ),
+                          dense: true,
+                          onTap: () {
+                            Navigator.pop(context);
+                            _copyJsonToClipboard(context);
                           },
                         ),
                       ],

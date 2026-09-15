@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/grocery_item.dart';
 import '../providers/inventory_provider.dart';
+import 'avatar_icons.dart';
 
 class AddItemModal extends StatefulWidget {
   final GroceryItem? itemToEdit; // Added for edit mode support
@@ -18,6 +19,7 @@ class _AddItemModalState extends State<AddItemModal> {
   List<String> _selectedCategoryIds = [];
   String? _selectedSupplierId;
   String? _selectedStorageTypeId;
+  String? _selectedAvatarIconName;
   bool _isSaving = false;
 
   @override
@@ -32,6 +34,7 @@ class _AddItemModalState extends State<AddItemModal> {
       _selectedCategoryIds = List.from(widget.itemToEdit!.categoryIds);
       _selectedSupplierId = widget.itemToEdit!.defaultSupplierId;
       _selectedStorageTypeId = widget.itemToEdit!.storageTypeId;
+      _selectedAvatarIconName = widget.itemToEdit!.avatarIconName;
     } else {
       _nameController = TextEditingController();
       _parController = TextEditingController(text: '5');
@@ -231,31 +234,293 @@ class _AddItemModalState extends State<AddItemModal> {
                 );
               },
             ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepOrange,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: _isSaving ? null : _save,
-                child: _isSaving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+            const SizedBox(height: 16),
+            const Text(
+              'Avatar Icon (Optional)',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.06),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.1),
                         ),
-                      )
-                    : Text(
-                        widget.itemToEdit == null ? 'Save Item' : 'Update Item',
                       ),
-              ),
+                      child: _buildAvatarPreview(),
+                    ),
+                    if (_selectedAvatarIconName != null)
+                      Positioned(
+                        top: -4,
+                        right: -4,
+                        child: GestureDetector(
+                          onTap: () =>
+                              setState(() => _selectedAvatarIconName = null),
+                          child: Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFF1E1E1E),
+                                width: 2,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              size: 11,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+                TextButton.icon(
+                  onPressed: _showIconPicker,
+                  icon: const Icon(Icons.grid_view_rounded, size: 16),
+                  label: const Text('Choose Icon'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 48,
+                    child: OutlinedButton(
+                      onPressed: _isSaving
+                          ? null
+                          : () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        side: BorderSide(
+                          color: Colors.white.withOpacity(0.2),
+                        ),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepOrange,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: _isSaving ? null : _save,
+                      child: _isSaving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              widget.itemToEdit == null
+                                  ? 'Save Item'
+                                  : 'Update Item',
+                            ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // Shows the currently-used icon: the picked override if there is one,
+  // otherwise a plain letter-initials avatar (not the emoji auto-match the
+  // home screen falls back to) — updates live as the name is typed, and
+  // reverts to this whenever the custom icon is removed.
+  Widget _buildAvatarPreview() {
+    final custom = _selectedAvatarIconName;
+    if (custom != null) {
+      final icon = kAvatarIconChoices[custom];
+      if (icon != null) {
+        return Icon(icon, color: Colors.deepOrange.shade200, size: 22);
+      }
+      return Text(custom, style: const TextStyle(fontSize: 20));
+    }
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _nameController,
+      builder: (context, value, child) {
+        return Text(
+          initialsForItemName(value.text),
+          style: TextStyle(
+            color: Colors.deepOrange.shade200,
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+            letterSpacing: 0.2,
+          ),
+        );
+      },
+    );
+  }
+
+  void _showIconPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1C1C1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: SizedBox(
+              height: 480,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Choose an Icon',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white.withOpacity(0.95),
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _pickerSectionLabel('Emoji'),
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 6,
+                                  mainAxisSpacing: 10,
+                                  crossAxisSpacing: 10,
+                                ),
+                            itemCount: kAvatarEmojiChoices.length,
+                            itemBuilder: (context, index) {
+                              final emoji = kAvatarEmojiChoices[index];
+                              final selected =
+                                  _selectedAvatarIconName == emoji;
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(
+                                    () => _selectedAvatarIconName = emoji,
+                                  );
+                                  Navigator.pop(ctx);
+                                },
+                                child: Container(
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: selected
+                                        ? Colors.deepOrange.withOpacity(0.25)
+                                        : Colors.white.withOpacity(0.05),
+                                    border: Border.all(
+                                      color: selected
+                                          ? Colors.deepOrange
+                                          : Colors.white.withOpacity(0.1),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    emoji,
+                                    style: const TextStyle(fontSize: 18),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          _pickerSectionLabel('Icons'),
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 6,
+                                  mainAxisSpacing: 10,
+                                  crossAxisSpacing: 10,
+                                ),
+                            itemCount: kAvatarIconChoices.length,
+                            itemBuilder: (context, index) {
+                              final entry = kAvatarIconChoices.entries
+                                  .elementAt(index);
+                              final selected =
+                                  _selectedAvatarIconName == entry.key;
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(
+                                    () =>
+                                        _selectedAvatarIconName = entry.key,
+                                  );
+                                  Navigator.pop(ctx);
+                                },
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: selected
+                                        ? Colors.deepOrange.withOpacity(0.25)
+                                        : Colors.white.withOpacity(0.05),
+                                    border: Border.all(
+                                      color: selected
+                                          ? Colors.deepOrange
+                                          : Colors.white.withOpacity(0.1),
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    entry.value,
+                                    color: selected
+                                        ? Colors.deepOrange.shade200
+                                        : Colors.white70,
+                                    size: 20,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _pickerSectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 8),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+          color: Colors.white.withOpacity(0.4),
         ),
       ),
     );
@@ -281,6 +546,7 @@ class _AddItemModalState extends State<AddItemModal> {
           parLevel: double.tryParse(_parController.text) ?? 0,
           defaultSupplierId: _selectedSupplierId,
           storageTypeId: _selectedStorageTypeId,
+          avatarIconName: _selectedAvatarIconName,
         );
         await inventory.updateItem(updatedItem);
       } else {
@@ -291,6 +557,7 @@ class _AddItemModalState extends State<AddItemModal> {
           parLevel: double.tryParse(_parController.text) ?? 0,
           defaultSupplierId: _selectedSupplierId,
           storageTypeId: _selectedStorageTypeId,
+          avatarIconName: _selectedAvatarIconName,
         );
         await inventory.addItem(newItem);
       }

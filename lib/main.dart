@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -24,6 +25,12 @@ void main() async {
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
+    );
+    // Explicit rather than relying on the platform default (on by default
+    // on Android/iOS, off by default on web) — without it, unchanged docs
+    // get re-read (and re-billed) from scratch on every app open.
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
     );
   } catch (e) {
     debugPrint("Firebase init failed: $e");
@@ -72,6 +79,25 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.dark,
           ),
           scaffoldBackgroundColor: const Color(0xFF1E1E1E), // Slate Grey
+          snackBarTheme: SnackBarThemeData(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF262626),
+            elevation: 8,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.white.withOpacity(0.08)),
+            ),
+            contentTextStyle: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+            actionTextColor: Colors.deepOrange,
+          ),
         ),
         home: const AuthWrapper(),
       ),

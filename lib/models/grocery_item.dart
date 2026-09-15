@@ -14,6 +14,10 @@ class GroceryItem {
   final List<String> categoryIds; // Changed from single categoryId
   final String? defaultSupplierId;
   final String? storageTypeId; // Link to StorageType (dry, fresh, drinks...)
+  // User-picked override for the avatar icon (a key into the app's curated
+  // icon set — see avatar_icons.dart). Null means auto-pick from the item
+  // name (emoji keyword match, falling back to letter initials).
+  final String? avatarIconName;
   final String unit; // kg, g, pcs, L
   final double parLevel;
   final double currentQuantity;
@@ -27,6 +31,7 @@ class GroceryItem {
     required this.categoryIds,
     this.defaultSupplierId,
     this.storageTypeId,
+    this.avatarIconName,
     required this.unit,
     required this.parLevel,
     required this.currentQuantity,
@@ -40,6 +45,7 @@ class GroceryItem {
     required List<String> categoryIds,
     String? defaultSupplierId,
     String? storageTypeId,
+    String? avatarIconName,
     required String unit,
     required double parLevel,
     double sortOrder = 0.0,
@@ -50,6 +56,7 @@ class GroceryItem {
       categoryIds: categoryIds,
       defaultSupplierId: defaultSupplierId,
       storageTypeId: storageTypeId,
+      avatarIconName: avatarIconName,
       unit: unit,
       parLevel: parLevel,
       currentQuantity: 0.0,
@@ -64,6 +71,7 @@ class GroceryItem {
     List<String>? categoryIds,
     Object? defaultSupplierId = _unset,
     Object? storageTypeId = _unset,
+    Object? avatarIconName = _unset,
     String? unit,
     double? parLevel,
     double? currentQuantity,
@@ -81,6 +89,9 @@ class GroceryItem {
       storageTypeId: identical(storageTypeId, _unset)
           ? this.storageTypeId
           : storageTypeId as String?,
+      avatarIconName: identical(avatarIconName, _unset)
+          ? this.avatarIconName
+          : avatarIconName as String?,
       unit: unit ?? this.unit,
       parLevel: parLevel ?? this.parLevel,
       currentQuantity: currentQuantity ?? this.currentQuantity,
@@ -97,6 +108,7 @@ class GroceryItem {
       'categoryIds': categoryIds,
       'defaultSupplierId': defaultSupplierId,
       'storageTypeId': storageTypeId,
+      'avatarIconName': avatarIconName,
       'unit': unit,
       'parLevel': parLevel,
       'currentQuantity': currentQuantity,
@@ -123,6 +135,7 @@ class GroceryItem {
           map['defaultSupplierId'] ??
           map['supplierId'], // Check both for migration
       storageTypeId: map['storageTypeId'],
+      avatarIconName: map['avatarIconName'],
       unit: map['unit'],
       parLevel: (map['parLevel'] as num).toDouble(),
       currentQuantity: (map['currentQuantity'] as num).toDouble(),
