@@ -199,34 +199,30 @@ class _AddItemModalState extends State<AddItemModal> {
                 const SizedBox(width: 12),
                 SizedBox(
                   width: 110,
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedUnit,
-                    isExpanded: true,
-                    decoration: _fieldDecoration(label: 'Unit'),
-                    items:
-                        [
-                              'kg',
-                              'g',
-                              'L',
-                              'pcs',
-                              'box',
-                              'bunch',
-                              'tray',
-                              'roll',
-                              'pack',
-                              'bag',
-                              'bottle',
-                              'can',
-                              'sheet',
-                              'carton',
-                              'case',
-                            ]
+                  child: Consumer<InventoryProvider>(
+                    builder: (context, inventory, child) {
+                      final names = inventory.units
+                          .map((u) => u.name)
+                          .toList();
+                      // Keep a unit no longer in the managed list (e.g.
+                      // removed after this item was created) selectable so
+                      // the dropdown doesn't crash on an unmatched value.
+                      if (!names.contains(_selectedUnit)) {
+                        names.insert(0, _selectedUnit);
+                      }
+                      return DropdownButtonFormField<String>(
+                        value: _selectedUnit,
+                        isExpanded: true,
+                        decoration: _fieldDecoration(label: 'Unit'),
+                        items: names
                             .map(
                               (e) =>
                                   DropdownMenuItem(value: e, child: Text(e)),
                             )
                             .toList(),
-                    onChanged: (v) => setState(() => _selectedUnit = v!),
+                        onChanged: (v) => setState(() => _selectedUnit = v!),
+                      );
+                    },
                   ),
                 ),
               ],

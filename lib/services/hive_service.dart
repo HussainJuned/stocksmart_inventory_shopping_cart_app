@@ -3,6 +3,7 @@ import '../models/grocery_item.dart';
 import '../models/category_model.dart';
 import '../models/supplier_model.dart';
 import '../models/storage_type_model.dart';
+import '../models/unit_model.dart';
 import '../models/shopping_list_model.dart';
 
 class HiveService {
@@ -10,6 +11,7 @@ class HiveService {
   static const String boxCategories = 'categories';
   static const String boxSuppliers = 'suppliers';
   static const String boxStorageTypes = 'storage_types';
+  static const String boxUnits = 'units';
   static const String boxShoppingLists = 'shopping_lists';
   static const String boxCartItems = 'cart_items';
   static const String boxPreferences = 'preferences';
@@ -20,6 +22,7 @@ class HiveService {
     await Hive.openBox<Map>(boxCategories);
     await Hive.openBox<Map>(boxSuppliers);
     await Hive.openBox<Map>(boxStorageTypes);
+    await Hive.openBox<Map>(boxUnits);
     await Hive.openBox<Map>(boxShoppingLists);
     await Hive.openBox<Map>(boxCartItems);
     if (!Hive.isBoxOpen(boxPreferences)) {
@@ -32,6 +35,7 @@ class HiveService {
     await Hive.box<Map>(boxCategories).clear();
     await Hive.box<Map>(boxSuppliers).clear();
     await Hive.box<Map>(boxStorageTypes).clear();
+    await Hive.box<Map>(boxUnits).clear();
     await Hive.box<Map>(boxShoppingLists).clear();
     await Hive.box<Map>(boxCartItems).clear();
     // Preferences are intentionally not cleared on logout — they are device-level settings.
@@ -115,6 +119,24 @@ class HiveService {
 
   Future<void> deleteStorageType(String id) async {
     final box = Hive.box<Map>(boxStorageTypes);
+    await box.delete(id);
+  }
+
+  // --- Units ---
+  List<Unit> getUnits() {
+    final box = Hive.box<Map>(boxUnits);
+    return box.values
+        .map((e) => Unit.fromMap(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  Future<void> saveUnit(Unit unit) async {
+    final box = Hive.box<Map>(boxUnits);
+    await box.put(unit.id, unit.toMap());
+  }
+
+  Future<void> deleteUnit(String id) async {
+    final box = Hive.box<Map>(boxUnits);
     await box.delete(id);
   }
 

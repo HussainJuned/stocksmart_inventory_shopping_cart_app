@@ -4,6 +4,7 @@ import '../models/grocery_item.dart';
 import '../models/category_model.dart';
 import '../models/supplier_model.dart';
 import '../models/storage_type_model.dart';
+import '../models/unit_model.dart';
 import '../services/firestore_service.dart';
 import '../services/hive_service.dart';
 
@@ -124,6 +125,24 @@ class GroceryRepository {
       },
       onError: (e) => debugPrint('GroceryRepository: storage types stream error: $e'),
     ));
+
+    _subscriptions.add(service.getUnitsStream().listen(
+      (remoteUnits) async {
+        final localUnits = _hiveService.getUnits();
+        final remoteIds = remoteUnits.map((u) => u.id).toSet();
+
+        for (final localUnit in localUnits) {
+          if (!remoteIds.contains(localUnit.id)) {
+            await _hiveService.deleteUnit(localUnit.id);
+          }
+        }
+        for (var remoteUnit in remoteUnits) {
+          await _hiveService.saveUnit(remoteUnit);
+        }
+        onSyncUpdated?.call();
+      },
+      onError: (e) => debugPrint('GroceryRepository: units stream error: $e'),
+    ));
   }
 
   void dispose() {
@@ -190,6 +209,26 @@ class GroceryRepository {
   Future<void> deleteStorageType(String id) async {
     await _hiveService.deleteStorageType(id);
     _firestoreService?.deleteStorageType(id);
+  }
+
+  // --- Units ---
+  List<Unit> getUnits() {
+    return _hiveService.getUnits();
+  }
+
+  Future<void> addUnit(Unit unit) async {
+    await _hiveService.saveUnit(unit);
+    _firestoreService?.saveUnit(unit);
+  }
+
+  Future<void> updateUnit(Unit unit) async {
+    await _hiveService.saveUnit(unit);
+    _firestoreService?.saveUnit(unit);
+  }
+
+  Future<void> deleteUnit(String id) async {
+    await _hiveService.deleteUnit(id);
+    _firestoreService?.deleteUnit(id);
   }
 
   Future<void> clearAllData() async {

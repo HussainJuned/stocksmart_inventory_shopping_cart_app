@@ -4,10 +4,31 @@ import '../models/grocery_item.dart';
 import '../models/category_model.dart';
 import '../models/supplier_model.dart';
 import '../models/storage_type_model.dart';
+import '../models/unit_model.dart';
 import '../repositories/grocery_repository.dart';
 import '../services/hive_service.dart';
 import '../services/firestore_service.dart';
 import '../services/bulk_import_service.dart';
+
+// Seeded into a fresh account's unit list on first run — after that, the
+// user's own add/remove/reorder edits are what's authoritative.
+const List<String> kDefaultUnitNames = [
+  'kg',
+  'g',
+  'L',
+  'pcs',
+  'box',
+  'bunch',
+  'tray',
+  'roll',
+  'pack',
+  'bag',
+  'bottle',
+  'can',
+  'sheet',
+  'carton',
+  'case',
+];
 
 class InventoryProvider extends ChangeNotifier {
   late GroceryRepository _repository;
@@ -15,6 +36,7 @@ class InventoryProvider extends ChangeNotifier {
   final List<Category> _categories = [];
   final List<Supplier> _suppliers = [];
   final List<StorageType> _storageTypes = [];
+  final List<Unit> _units = [];
 
   bool _isLoading = true;
   bool get isLoading => _isLoading;
@@ -23,6 +45,7 @@ class InventoryProvider extends ChangeNotifier {
   List<Category> get categories => _categories;
   List<Supplier> get suppliers => _suppliers;
   List<StorageType> get storageTypes => _storageTypes;
+  List<Unit> get units => _units;
 
   InventoryProvider() {
     // Initial dummy repository, updated via update() in ProxyProvider
@@ -55,9 +78,23 @@ class InventoryProvider extends ChangeNotifier {
     _fetchLocal();
 
     // Automatic seeding logic removed as requested by the user.
+    // Units are the exception — the predefined list is meant to still be
+    // the starting default, just editable from here on.
+    if (_units.isEmpty) {
+      await _seedDefaultUnits();
+      _fetchLocal();
+    }
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  Future<void> _seedDefaultUnits() async {
+    for (int i = 0; i < kDefaultUnitNames.length; i++) {
+      await _repository.addUnit(
+        Unit.create(name: kDefaultUnitNames[i], sortOrder: i),
+      );
+    }
   }
 
   void _fetchLocal() {
@@ -80,6 +117,10 @@ class InventoryProvider extends ChangeNotifier {
     _storageTypes.clear();
     _storageTypes.addAll(_repository.getStorageTypes());
     _storageTypes.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+
+    _units.clear();
+    _units.addAll(_repository.getUnits());
+    _units.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
     notifyListeners();
   }
@@ -313,6 +354,48 @@ class InventoryProvider extends ChangeNotifier {
     }
 
     _storageTypes
+      ..clear()
+      ..addAll(reordered);
+
+    notifyListeners();
+  }
+
+  Future<void> addUnit(String name) async {
+    final newUnit = Unit.create(name: name, sortOrder: _units.length);
+    await _repository.addUnit(newUnit);
+    _fetchLocal();
+  }
+
+  Future<void> updateUnit(Unit unit) async {
+    await _repository.updateUnit(unit);
+    _fetchLocal();
+  }
+
+  Future<void> deleteUnit(String id) async {
+    await _repository.deleteUnit(id);
+    _fetchLocal();
+  }
+
+  Future<void> reorderUnit(int oldIndex, int newIndex) async {
+    // ReorderableListView reports newIndex after removal, so adjust
+    if (oldIndex < newIndex) newIndex -= 1;
+    if (oldIndex == newIndex) return;
+
+    final reordered = List<Unit>.from(_units);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+
+    // Re-assign sequential sortOrder values
+    for (int i = 0; i < reordered.length; i++) {
+      final unit = reordered[i];
+      if (unit.sortOrder != i) {
+        final updated = Unit(id: unit.id, name: unit.name, sortOrder: i);
+        reordered[i] = updated;
+        _repository.updateUnit(updated);
+      }
+    }
+
+    _units
       ..clear()
       ..addAll(reordered);
 

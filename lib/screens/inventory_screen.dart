@@ -14,6 +14,7 @@ import 'category_manager_screen.dart';
 import 'item_manager_screen.dart';
 import 'supplier_manager_screen.dart';
 import 'storage_type_manager_screen.dart';
+import 'unit_manager_screen.dart';
 
 // All filtering/sorting below runs purely against the already-loaded Hive
 // items list (see InventoryProvider), so search and sort work fully
@@ -503,6 +504,20 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => const ItemManagerScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _drawerTile(
+                      icon: Icons.straighten,
+                      iconColor: Colors.lightGreen,
+                      label: 'Manage Units',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const UnitManagerScreen(),
                           ),
                         );
                       },

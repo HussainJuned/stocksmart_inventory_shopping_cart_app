@@ -3,6 +3,7 @@ import '../models/grocery_item.dart';
 import '../models/category_model.dart';
 import '../models/supplier_model.dart';
 import '../models/storage_type_model.dart';
+import '../models/unit_model.dart';
 import '../models/shopping_list_model.dart';
 
 class FirestoreService {
@@ -139,6 +140,37 @@ class FirestoreService {
         .delete();
   }
 
+  // --- Units ---
+  Stream<List<Unit>> getUnitsStream() {
+    return _db
+        .collection('users')
+        .doc(userId)
+        .collection('units')
+        .snapshots()
+        .map(
+          (snapshot) =>
+              snapshot.docs.map((doc) => Unit.fromMap(doc.data())).toList(),
+        );
+  }
+
+  Future<void> saveUnit(Unit unit) async {
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('units')
+        .doc(unit.id)
+        .set(unit.toMap());
+  }
+
+  Future<void> deleteUnit(String unitId) async {
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('units')
+        .doc(unitId)
+        .delete();
+  }
+
   // --- Shopping Lists ---
   Stream<List<ShoppingList>> getShoppingListsStream() {
     return _db
@@ -209,6 +241,7 @@ class FirestoreService {
       'categories',
       'suppliers',
       'storage_types',
+      'units',
       'shopping_lists',
       'cart_items'
     ];
