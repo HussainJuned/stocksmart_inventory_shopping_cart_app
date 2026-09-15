@@ -288,8 +288,7 @@ class ItemTile extends StatelessWidget {
                           letterSpacing: 0.2,
                         ),
                         textAlign: TextAlign.start,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        softWrap: true,
                       ),
                     ),
                   ),
@@ -503,18 +502,27 @@ class ItemTile extends StatelessWidget {
   }
 
   Widget _buildUnitPill(GroceryItem item) {
+    // Fixed width (rather than sizing to the text) so the stepper next to
+    // it lands in the same spot on every row, regardless of whether the
+    // unit text is short ("KG") or long ("BOTTLE", "CARTON").
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+      width: 42,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         item.unit.toUpperCase(),
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          fontSize: 8,
+          fontSize: 7,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.4,
+          letterSpacing: 0.2,
           color: Colors.white.withOpacity(0.45),
         ),
       ),

@@ -216,8 +216,13 @@ class _AddItemModalState extends State<AddItemModal> {
                         decoration: _fieldDecoration(label: 'Unit'),
                         items: names
                             .map(
-                              (e) =>
-                                  DropdownMenuItem(value: e, child: Text(e)),
+                              (e) => DropdownMenuItem(
+                                value: e,
+                                child: Text(
+                                  e,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             )
                             .toList(),
                         onChanged: (v) => setState(() => _selectedUnit = v!),

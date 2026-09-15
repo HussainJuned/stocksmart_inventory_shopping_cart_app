@@ -856,31 +856,38 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              if (showDot)
-                Container(
-                  width: 10,
-                  height: 10,
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: accent,
-                    shape: BoxShape.circle,
+          Expanded(
+            child: Row(
+              children: [
+                if (showDot)
+                  Container(
+                    width: 10,
+                    height: 10,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: accent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w900,
+                      color: accent,
+                      letterSpacing: 0.8,
+                    ),
                   ),
                 ),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  color: accent,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
               color: badgeBg,
               borderRadius: BorderRadius.circular(10),
@@ -889,13 +896,15 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (isComplete) ...[
-                  Icon(Icons.check_circle, size: 11, color: badgeColor),
-                  const SizedBox(width: 4),
+                  Icon(Icons.check_circle, size: 10, color: badgeColor),
+                  const SizedBox(width: 3),
                 ],
                 Text(
                   badgeText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: FontWeight.bold,
                     color: badgeColor,
                   ),
@@ -1931,18 +1940,27 @@ class _CartQuantityStepperState extends State<_CartQuantityStepper> {
           ),
         ),
         const SizedBox(width: 8),
+        // Fixed width (rather than sizing to the text) so the stepper next
+        // to it lands in the same spot on every row, regardless of whether
+        // the unit text is short ("KG") or long ("BOTTLE", "CARTON").
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+          width: 42,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
             widget.item.unit.toUpperCase(),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 9.5,
+              fontSize: 7,
               fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
+              letterSpacing: 0.2,
               color: Colors.white.withOpacity(0.4),
             ),
           ),

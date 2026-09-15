@@ -34,7 +34,7 @@ class UnitManagerScreen extends StatelessWidget {
                       .length;
                   return ListTile(
                     key: ValueKey(unit.id),
-                    title: Text(unit.name),
+                    title: Text(unit.name, overflow: TextOverflow.ellipsis),
                     subtitle: Text(
                       itemsUsingUnit == 0
                           ? 'Not used by any item'
