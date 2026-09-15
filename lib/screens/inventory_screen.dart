@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../models/grocery_item.dart';
 import '../providers/auth_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/cart_provider.dart';
@@ -14,6 +15,40 @@ import 'item_manager_screen.dart';
 import 'supplier_manager_screen.dart';
 import 'storage_type_manager_screen.dart';
 
+// All filtering/sorting below runs purely against the already-loaded Hive
+// items list (see InventoryProvider), so search and sort work fully
+// offline — no network round-trip involved.
+enum _HomeSortBy { defaultOrder, nameAsc, stockLow, lastModified }
+
+String _homeSortByLabel(_HomeSortBy sortBy) => switch (sortBy) {
+  _HomeSortBy.defaultOrder => 'Default order',
+  _HomeSortBy.nameAsc => 'Name (A–Z)',
+  _HomeSortBy.stockLow => 'Stock level (lowest first)',
+  _HomeSortBy.lastModified => 'Last modified (newest first)',
+};
+
+void _sortHomeItemsInPlace(List<GroceryItem> items, _HomeSortBy sortBy) {
+  switch (sortBy) {
+    case _HomeSortBy.defaultOrder:
+      return;
+    case _HomeSortBy.nameAsc:
+      items.sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+      return;
+    case _HomeSortBy.stockLow:
+      items.sort(
+        (a, b) => (a.currentQuantity - a.parLevel).compareTo(
+          b.currentQuantity - b.parLevel,
+        ),
+      );
+      return;
+    case _HomeSortBy.lastModified:
+      items.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+      return;
+  }
+}
+
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
 
@@ -22,6 +57,16 @@ class InventoryScreen extends StatefulWidget {
 }
 
 class _InventoryScreenState extends State<InventoryScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  _HomeSortBy _sortBy = _HomeSortBy.defaultOrder;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _editRestaurantName(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final currentName = auth.user?.displayName ?? 'StockSmart';
@@ -327,7 +372,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
         ),
         body: SafeArea(
           top: false,
-          child: _buildBody(inventory, showUncategorized),
+          child: Column(
+            children: [
+              if (inventory.items.isNotEmpty) _buildSearchSortBar(),
+              Expanded(child: _buildBody(inventory, showUncategorized)),
+            ],
+          ),
         ),
         drawer: Drawer(
           backgroundColor: const Color(0xFF161616),
@@ -393,7 +443,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
               ),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  padding: EdgeInsets.fromLTRB(
+                    0,
+                    8,
+                    0,
+                    8 + MediaQuery.of(context).padding.bottom,
+                  ),
                   children: [
                     _drawerSectionLabel('Menu'),
                     _drawerTile(
@@ -607,22 +662,25 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         ), */
                       ],
                     ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Divider(height: 24),
+                    ),
+                    _drawerTile(
+                      icon: Icons.logout,
+                      iconColor: Colors.redAccent,
+                      label: 'Logout',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Provider.of<AuthProvider>(
+                          context,
+                          listen: false,
+                        ).signOut();
+                      },
+                    ),
                   ],
                 ),
               ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.redAccent),
-                title: const Text(
-                  'Logout',
-                  style: TextStyle(color: Colors.redAccent),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Provider.of<AuthProvider>(context, listen: false).signOut();
-                },
-              ),
-              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -743,11 +801,93 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return TabBarView(
       children: [
         ...inventory.categories.map(
-          (cat) => _CategoryList(categoryId: cat.id, categoryName: cat.name),
+          (cat) => _CategoryList(
+            categoryId: cat.id,
+            categoryName: cat.name,
+            searchQuery: _searchQuery,
+            sortBy: _sortBy,
+          ),
         ),
         if (showUncategorized)
-          const _CategoryList(categoryId: null, categoryName: 'Uncategorized'),
+          _CategoryList(
+            categoryId: null,
+            categoryName: 'Uncategorized',
+            searchQuery: _searchQuery,
+            sortBy: _sortBy,
+          ),
       ],
+    );
+  }
+
+  Widget _buildSearchSortBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: SizedBox(
+              height: 40,
+              child: TextField(
+                controller: _searchController,
+                textAlignVertical: TextAlignVertical.center,
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: 'Search items...',
+                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                  suffixIcon: _searchQuery.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear_rounded, size: 18),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        ),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.06),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                onChanged: (value) =>
+                    setState(() => _searchQuery = value.trim()),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          PopupMenuButton<_HomeSortBy>(
+            tooltip: 'Sort by',
+            initialValue: _sortBy,
+            onSelected: (sortBy) => setState(() => _sortBy = sortBy),
+            itemBuilder: (context) => [
+              for (final sortBy in _HomeSortBy.values)
+                CheckedPopupMenuItem<_HomeSortBy>(
+                  value: sortBy,
+                  checked: _sortBy == sortBy,
+                  child: Text(_homeSortByLabel(sortBy)),
+                ),
+            ],
+            child: Container(
+              height: 40,
+              width: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.sort_rounded,
+                size: 20,
+                color: _sortBy == _HomeSortBy.defaultOrder
+                    ? Colors.white70
+                    : Colors.orangeAccent,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -791,13 +931,21 @@ class _CategoryList extends StatelessWidget {
   // Null categoryId means "uncategorized" (items with no category assigned).
   final String? categoryId;
   final String categoryName;
-  const _CategoryList({required this.categoryId, required this.categoryName});
+  final String searchQuery;
+  final _HomeSortBy sortBy;
+
+  const _CategoryList({
+    required this.categoryId,
+    required this.categoryName,
+    this.searchQuery = '',
+    this.sortBy = _HomeSortBy.defaultOrder,
+  });
 
   @override
   Widget build(BuildContext context) {
     final inventory = Provider.of<InventoryProvider>(context);
 
-    final items = inventory.items
+    final categoryItems = inventory.items
         .where(
           (i) => categoryId == null
               ? i.categoryIds.isEmpty
@@ -805,10 +953,7 @@ class _CategoryList extends StatelessWidget {
         )
         .toList();
 
-    // Or logic to show ALL if categoryId matches 'generic'?
-    // For now strict filtering.
-
-    if (items.isEmpty) {
+    if (categoryItems.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -818,6 +963,32 @@ class _CategoryList extends StatelessWidget {
             // Hint: Add item to this category
           ],
         ),
+      );
+    }
+
+    final query = searchQuery.toLowerCase();
+    final items = query.isEmpty
+        ? categoryItems
+        : categoryItems
+              .where((i) => i.name.toLowerCase().contains(query))
+              .toList();
+
+    if (items.isEmpty) {
+      return Center(child: Text('No items match "$searchQuery".'));
+    }
+
+    // Manual drag reorder only makes sense against the item's real stored
+    // order — once the list is searched or sorted, fall back to a plain
+    // (non-reorderable) list.
+    final isReorderable = query.isEmpty && sortBy == _HomeSortBy.defaultOrder;
+    if (!isReorderable) {
+      _sortHomeItemsInPlace(items, sortBy);
+      return ListView.builder(
+        padding: const EdgeInsets.only(top: 8, bottom: 80),
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          return ItemTile(key: ValueKey(items[index].id), item: items[index]);
+        },
       );
     }
 

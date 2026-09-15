@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -12,6 +14,138 @@ import '../providers/settings_provider.dart';
 import '../widgets/add_item_modal.dart';
 import '../widgets/avatar_icons.dart';
 import '../widgets/quantity_stepper.dart';
+
+/// Wraps the avatar so a 3-second hold arms reordering, drawing a progress
+/// ring around it while held so the user can see when the hold will
+/// "release" into a drag.
+///
+/// [DelayedMultiDragGestureRecognizer]'s default touch-slop tolerance
+/// (~18px) is tuned for a half-second long-press; over a 3-second hold,
+/// ordinary hand tremor easily exceeds that and silently cancels the
+/// gesture, which is why plain long-press reordering felt broken. This
+/// widget hands the recognizer a much more forgiving tolerance instead.
+class _AvatarReorderHandle extends StatefulWidget {
+  final int index;
+  final Widget child;
+
+  const _AvatarReorderHandle({required this.index, required this.child});
+
+  @override
+  State<_AvatarReorderHandle> createState() => _AvatarReorderHandleState();
+}
+
+class _AvatarReorderHandleState extends State<_AvatarReorderHandle>
+    with SingleTickerProviderStateMixin {
+  static const _holdDuration = Duration(seconds: 1);
+  static const _moveTolerance = 48.0;
+
+  late final AnimationController _controller;
+  Offset? _downPosition;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: _holdDuration)
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          HapticFeedback.mediumImpact();
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onPointerDown(PointerDownEvent event) {
+    _downPosition = event.position;
+    HapticFeedback.selectionClick();
+    _controller.forward(from: 0);
+
+    final list = SliverReorderableList.maybeOf(context);
+    final recognizer = DelayedMultiDragGestureRecognizer(
+      debugOwner: this,
+      delay: _holdDuration,
+    )..gestureSettings = const DeviceGestureSettings(
+        touchSlop: _moveTolerance,
+      );
+    list?.startItemDragReorder(
+      index: widget.index,
+      event: event,
+      recognizer: recognizer,
+    );
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    final down = _downPosition;
+    if (down != null && (event.position - down).distance > _moveTolerance) {
+      _cancelHold();
+    }
+  }
+
+  void _cancelHold() {
+    _downPosition = null;
+    if (_controller.status != AnimationStatus.dismissed) {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: _onPointerDown,
+      onPointerMove: _onPointerMove,
+      onPointerUp: (_) => _cancelHold(),
+      onPointerCancel: (_) => _cancelHold(),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return CustomPaint(
+            foregroundPainter: _HoldProgressPainter(
+              progress: _controller.value,
+            ),
+            child: Transform.scale(
+              scale: 1 + (_controller.value * 0.12),
+              child: child,
+            ),
+          );
+        },
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+class _HoldProgressPainter extends CustomPainter {
+  final double progress;
+
+  const _HoldProgressPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2 + 3;
+    final paint = Paint()
+      ..color = Colors.orangeAccent.withOpacity(0.9)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      2 * math.pi * progress,
+      false,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _HoldProgressPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
 
 class ItemTile extends StatelessWidget {
   final GroceryItem item;
@@ -30,7 +164,7 @@ class ItemTile extends StatelessWidget {
     final isInCart = cartItem != null;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       child: Dismissible(
         key: ValueKey('cart_swipe_${item.id}'),
         direction: isInCart
@@ -122,18 +256,18 @@ class ItemTile extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // Letter avatar (leading) — also the drag handle.
                   index != null
-                      ? ReorderableDragStartListener(
+                      ? _AvatarReorderHandle(
                           index: index!,
                           child: _buildAvatar(item, isInCart),
                         )
                       : _buildAvatar(item, isInCart),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   // Name — long-press to edit
                   Expanded(
                     child: GestureDetector(
@@ -149,9 +283,9 @@ class ItemTile extends StatelessWidget {
                         item.name,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: 14,
                           color: Colors.white.withOpacity(0.95),
-                          letterSpacing: 0.3,
+                          letterSpacing: 0.2,
                         ),
                         textAlign: TextAlign.start,
                         maxLines: 2,
@@ -159,7 +293,7 @@ class ItemTile extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   // Claim horizontal drags here so the Dismissible above
                   // doesn't compete with taps on the quantity field.
                   GestureDetector(
@@ -169,7 +303,7 @@ class ItemTile extends StatelessWidget {
                     onHorizontalDragEnd: (_) {},
                     child: _buildStepper(context, item, inventory),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 6),
                   _buildUnitPill(item),
                 ],
               ),
@@ -370,7 +504,7 @@ class ItemTile extends StatelessWidget {
 
   Widget _buildUnitPill(GroceryItem item) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(20),
@@ -378,7 +512,7 @@ class ItemTile extends StatelessWidget {
       child: Text(
         item.unit.toUpperCase(),
         style: TextStyle(
-          fontSize: 9.5,
+          fontSize: 8,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.4,
           color: Colors.white.withOpacity(0.45),
@@ -389,6 +523,9 @@ class ItemTile extends StatelessWidget {
 
   Widget _buildAvatarContent(GroceryItem item) {
     final custom = item.avatarIconName;
+    if (custom == kInitialsAvatarKey) {
+      return _buildInitialsText(item.name);
+    }
     if (custom != null) {
       final customIcon = kAvatarIconChoices[custom];
       if (customIcon != null) {
@@ -402,8 +539,12 @@ class ItemTile extends StatelessWidget {
     if (emoji != null) {
       return Text(emoji, style: const TextStyle(fontSize: 18));
     }
+    return _buildInitialsText(item.name);
+  }
+
+  Widget _buildInitialsText(String name) {
     return Text(
-      initialsForItemName(item.name),
+      initialsForItemName(name),
       style: TextStyle(
         color: Colors.deepOrange.shade200,
         fontWeight: FontWeight.w800,
@@ -420,14 +561,8 @@ class ItemTile extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isInCart
-            ? Colors.green.withOpacity(0.16)
-            : Colors.white.withOpacity(0.06),
-        border: Border.all(
-          color: isInCart
-              ? Colors.green.withOpacity(0.4)
-              : Colors.white.withOpacity(0.1),
-        ),
+        color: Colors.white.withOpacity(0.06),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: _buildAvatarContent(item),
     );

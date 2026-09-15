@@ -99,6 +99,9 @@ class _QuantityStepperState extends State<QuantityStepper> {
     }
   }
 
+  bool get _isBelowPar =>
+      (_pendingQuantity ?? widget.item.currentQuantity) < widget.item.parLevel;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -121,10 +124,12 @@ class _QuantityStepperState extends State<QuantityStepper> {
                 decimal: true,
               ),
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: _isBelowPar
+                    ? Colors.amber.shade300.withOpacity(0.6)
+                    : Colors.white,
               ),
               decoration: const InputDecoration(
                 border: InputBorder.none,

@@ -6,13 +6,15 @@ const Map<String, String> kEmojiKeywords = {
   'toilet paper': '🧻', 'tissue': '🧻', 'paper towel': '🧻',
   'milk': '🥛', 'cheese': '🧀', 'butter': '🧈', 'yog': '🍦', 'cream': '🥛',
   'egg': '🥚',
-  'chicken': '🍗', 'beef': '🥩', 'steak': '🥩', 'meat': '🥩',
+  'carcass': '🦴', 'chicken': '🍗', 'beef': '🥩', 'steak': '🥩', 'meat': '🥩',
+  'mince': '🥩', 'minced': '🥩',
   'bacon': '🥓', 'sausage': '🌭', 'ham': '🍖',
   'fish': '🐟', 'salmon': '🐟', 'shrimp': '🦐', 'prawn': '🦐',
   'pineapple': '🍍',
   'apple': '🍎', 'banana': '🍌', 'orange': '🍊', 'lemon': '🍋',
   'grape': '🍇', 'melon': '🍉', 'strawberr': '🍓', 'avocado': '🥑',
   'mango': '🥭', 'peach': '🍑', 'pear': '🍐',
+  'sweet potato': '🍠', 'yam': '🍠',
   'tomato': '🍅', 'potato': '🥔', 'onion': '🧅', 'garlic': '🧄',
   'carrot': '🥕', 'pepper': '🌶️', 'cucumber': '🥒', 'mushroom': '🍄',
   'corn': '🌽', 'lettuce': '🥬', 'salad': '🥬', 'broccoli': '🥦',
@@ -37,7 +39,9 @@ const Map<String, String> kEmojiKeywords = {
   'shiitake': '🍄', '7up': '🥤', 'asahi': '🍺', 'kirin': '🍺',
   'sagres': '🍺', 'sapporo': '🍺', 'super bock': '🍺', 'coke': '🥤',
   'sumol': '🧃', 'soju': '🥃',
-  'back fat': '🥓', 'bone': '🦴', 'pork': '🥩', 'trotter': '🐷',
+  'back fat': '🥓', 'pork belly': '🥓', 'bone': '🦴',
+  'pork': '🥩', 'trotter': '🐷', 'pig': '🐷',
+  'cow': '🐄', 'goat': '🐐', 'sheep': '🐑',
   'vinegar': '🍶',
   'cloth': '🧽', 'scouring': '🧽',
   'cleaner': '🧴', 'hand washing': '🧼', 'washing up': '🧼',
@@ -117,7 +121,48 @@ const Map<String, String> kEmojiKeywords = {
   'margarita': '🍹', 'mojito': '🍹',
   'whisky': '🥃', 'whiskey': '🥃', 'rum': '🥃', 'tequila': '🥃',
   'champagne': '🍾', 'prosecco': '🍾', 'cider': '🍺',
+
+  // More produce
+  'chestnut': '🌰', 'celery': '🥬',
+
+  // More seafood
+  'sardine': '🐟', 'anchovy': '🐟', 'scallop': '🦪',
+
+  // More desserts
+  'custard': '🍮', 'flan': '🍮', 'pudding': '🍮',
+  'muffin': '🧁', 'cupcake': '🧁',
+
+  // More snacks
+  'rice cracker': '🍘', 'cracker': '🍘',
+  'granola': '🥣', 'trail mix': '🥜',
+
+  // More beverages
+  'energy drink': '🥤', 'smoothie': '🧃', 'kombucha': '🫙',
+  'bubble tea': '🧋', 'boba': '🧋',
+
+  // Canned / jarred pantry
+  'canned': '🥫', 'tinned': '🥫',
+  'jam': '🫙', 'marmalade': '🫙', 'pickle': '🫙', 'preserve': '🫙',
+  'chutney': '🫙',
+  'stock cube': '🧂', 'bouillon': '🧂',
+
+  // More grains
+  'quinoa': '🌾', 'couscous': '🌾',
+
+  // More household / cleaning
+  'dishwasher': '🧼', 'fabric softener': '🧴', 'bleach': '🧴',
+
+  // More personal care
+  'sunscreen': '🧴', 'deodorant': '🧴', 'shaving': '🪒', 'mouthwash': '🪥',
+
+  // More baby
+  'wet wipe': '🧻', 'baby wipe': '👶', 'pacifier': '👶', 'baby food': '👶',
 };
+
+/// Sentinel stored on [GroceryItem.avatarIconName] to explicitly force the
+/// plain letter-initials avatar, overriding the emoji auto-match a name
+/// would otherwise get. Lets a user opt out of a forced/wrong auto-icon.
+const String kInitialsAvatarKey = '__initials__';
 
 /// Emoji whose keyword matches a substring of [name] (case-insensitive), or
 /// null if nothing matches.
@@ -132,6 +177,18 @@ String? emojiForItemName(String name) {
 /// Every distinct emoji from [kEmojiKeywords], in first-seen order, so the
 /// icon picker can offer them as choices too — not just the Material icons.
 final List<String> kAvatarEmojiChoices = kEmojiKeywords.values.toSet().toList();
+
+/// Reverse of [kEmojiKeywords]: emoji -> every keyword that matches to it
+/// (e.g. '🐷' -> ['trotter']). Lets the icon picker's search box find an
+/// emoji by the grocery term for it, since the emoji character itself isn't
+/// something a user can type.
+final Map<String, List<String>> kKeywordsForEmoji = () {
+  final map = <String, List<String>>{};
+  for (final entry in kEmojiKeywords.entries) {
+    map.putIfAbsent(entry.value, () => []).add(entry.key);
+  }
+  return map;
+}();
 
 /// First letter of the first two words (or the first two letters of a
 /// single word) — e.g. "Toilet Tissue" -> "TT", "Milk" -> "MI".

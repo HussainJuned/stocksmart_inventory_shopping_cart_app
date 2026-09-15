@@ -399,6 +399,18 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                       final item = entry as CartItem;
                       final isBought = item.state == CartItemState.bought;
                       final isSkipped = item.state == CartItemState.skipped;
+                      final toggleBoughtState = isArchived
+                          ? null
+                          : () {
+                              HapticFeedback.lightImpact();
+                              cartProvider.updateItemState(
+                                widget.listId,
+                                item.id,
+                                isBought
+                                    ? CartItemState.pending
+                                    : CartItemState.bought,
+                              );
+                            };
 
                       return Dismissible(
                         key: Key(item.id),
@@ -498,7 +510,10 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                               ),
                             );
                         },
-                        child: Container(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: toggleBoughtState,
+                          child: Container(
                           decoration: BoxDecoration(
                             color: const Color(0xFF1E1E1E),
                             border: Border(
@@ -509,25 +524,13 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                           ),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
+                              horizontal: 10,
                               vertical: 9,
                             ),
                                 child: Row(
                                   children: [
-                                    const SizedBox(width: 14),
                                     GestureDetector(
-                                      onTap: isArchived
-                                          ? null
-                                          : () {
-                                              HapticFeedback.lightImpact();
-                                              cartProvider.updateItemState(
-                                                widget.listId,
-                                                item.id,
-                                                isBought
-                                                    ? CartItemState.pending
-                                                    : CartItemState.bought,
-                                              );
-                                            },
+                                      onTap: toggleBoughtState,
                                       child: Container(
                                         padding: const EdgeInsets.all(5),
                                         decoration: BoxDecoration(
@@ -553,7 +556,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 32),
+                                    const SizedBox(width: 14),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -584,7 +587,6 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                               item.unit,
                                             ),
                                             child: Row(
-                                              mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Icon(
                                                   Icons.inventory_2_outlined,
@@ -593,14 +595,18 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                                       .withOpacity(0.55),
                                                 ),
                                                 const SizedBox(width: 4),
-                                                Text(
-                                                  'Stock: ${_formatQty(_getCurrentStock(inventoryProvider, item.itemId))} ${item.unit}',
-                                                  style: TextStyle(
-                                                    fontSize: 10.5,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: Colors.amber
-                                                        .withOpacity(0.55),
-                                                    letterSpacing: 0.2,
+                                                Flexible(
+                                                  child: Text(
+                                                    'Stock: ${_formatQty(_getCurrentStock(inventoryProvider, item.itemId))} ${item.unit}',
+                                                    style: TextStyle(
+                                                      fontSize: 10.5,
+                                                      fontWeight: FontWeight.w500,
+                                                      color: Colors.amber
+                                                          .withOpacity(0.55),
+                                                      letterSpacing: 0.2,
+                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                   ),
                                                 ),
                                               ],
@@ -618,6 +624,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                                   ],
                                 ),
                               ),
+                          ),
                         ),
                       );
                     }, childCount: flatGroupItems[sortedKeys[gi]]!.length),
